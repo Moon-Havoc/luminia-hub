@@ -1,8 +1,8 @@
 const {
   Client,
+  EmbedBuilder,
   GatewayIntentBits,
   Partials,
-  PermissionFlagsBits,
 } = require("discord.js");
 const config = require("./config");
 const { statements } = require("./db");
@@ -45,21 +45,95 @@ async function resolveMember(message, raw) {
 }
 
 function replyError(message, error) {
-  return message.reply(`Error: ${error.message}`);
+  return replyEmbed(message, {
+    color: "error",
+    title: "Command Error",
+    description: error.message,
+  });
 }
 
-function formatKey(record) {
+function colorValue(color) {
+  const colors = {
+    success: 0x57f287,
+    error: 0xed4245,
+    info: 0x5865f2,
+    warning: 0xfee75c,
+  };
+
+  return colors[color] || colors.info;
+}
+
+function formatTimestamp(value) {
+  return new Date(value).toLocaleString();
+}
+
+function keyFields(record) {
   return [
-    `Key: \`${record.key}\``,
-    `Type: ${record.type}`,
-    `Status: ${record.status}`,
-    `Expires: ${new Date(record.expires_at).toLocaleString()}`,
-  ].join("\n");
+    {
+      name: "Key",
+      value: `\`${record.key}\``,
+      inline: false,
+    },
+    {
+      name: "Type",
+      value: record.type,
+      inline: true,
+    },
+    {
+      name: "Status",
+      value: record.status,
+      inline: true,
+    },
+    {
+      name: "Expires",
+      value: formatTimestamp(record.expires_at),
+      inline: false,
+    },
+  ];
+}
+
+function buildEmbed(message, { color = "info", title, description, fields = [] }) {
+  const embed = new EmbedBuilder()
+    .setColor(colorValue(color))
+    .setTimestamp()
+    .setFooter({ text: `Requested by ${message.author.tag}` });
+
+  if (title) {
+    embed.setTitle(title);
+  }
+
+  if (description) {
+    embed.setDescription(description);
+  }
+
+  if (fields.length) {
+    embed.addFields(fields);
+  }
+
+  return embed;
+}
+
+function replyEmbed(message, payload) {
+  return message.reply({
+    embeds: [buildEmbed(message, payload)],
+  });
+}
+
+function replyUsage(message, usage) {
+  return replyEmbed(message, {
+    color: "warning",
+    title: "Usage",
+    description: `\`${usage}\``,
+  });
 }
 
 async function ensureAdmin(message) {
   if (!isBotAdmin(message.member)) {
-    await message.reply("You need admin or Manage Server permissions to use this command.");
+    await replyEmbed(message, {
+      color: "warning",
+      title: "Permission Required",
+      description: "You need `Administrator` or `Manage Server` permissions to use this command.",
+    });
     return false;
   }
   return true;
@@ -73,13 +147,20 @@ async function handleGenerate(message, args, type) {
   const targetRaw = args[0];
   const robloxUser = args[1];
   if (!targetRaw || !robloxUser) {
-    await message.reply(`Usage: ${config.commandPrefix}${type === "premium" ? "prem-gen" : "gen-key"} {user} {robloxuser}`);
+    await replyUsage(
+      message,
+      `${config.commandPrefix}${type === "premium" ? "prem-gen" : "gen-key"} {user} {robloxuser}`,
+    );
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -94,9 +175,12 @@ async function handleGenerate(message, args, type) {
       actorTag: message.author.tag,
     });
 
-    await message.reply(
-      `${type === "premium" ? "Premium" : "Normal"} key created for ${member.user.tag}\n${formatKey(result.record)}`,
-    );
+    await replyEmbed(message, {
+      color: type === "premium" ? "info" : "success",
+      title: `${type === "premium" ? "Premium" : "Normal"} Key Created`,
+      description: `Created for **${member.user.tag}**`,
+      fields: keyFields(result.record),
+    });
   } catch (error) {
     await replyError(message, error);
   }
@@ -110,19 +194,30 @@ async function handleRevoke(message, args, type) {
   const targetRaw = args[0];
   const key = args[1];
   if (!targetRaw || !key) {
-    await message.reply(`Usage: ${config.commandPrefix}${type === "premium" ? "revoke_prem" : "revoke_key"} {user} {key}`);
+    await replyUsage(
+      message,
+      `${config.commandPrefix}${type === "premium" ? "revoke_prem" : "revoke_key"} {user} {key}`,
+    );
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
   const existing = statements.findKeyByValue.get(key);
   if (!existing || existing.discord_user_id !== member.id || existing.type !== type) {
-    await message.reply("That key does not belong to that user and key type.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "Key Mismatch",
+      description: "That key does not belong to that user and key type.",
+    });
     return;
   }
 
@@ -133,7 +228,12 @@ async function handleRevoke(message, args, type) {
       actorId: message.author.id,
       actorTag: message.author.tag,
     });
-    await message.reply(`Revoked ${type} key for ${member.user.tag}\n${formatKey(updated)}`);
+    await replyEmbed(message, {
+      color: "warning",
+      title: `${type === "premium" ? "Premium" : "Normal"} Key Revoked`,
+      description: `Revoked for **${member.user.tag}**`,
+      fields: keyFields(updated),
+    });
   } catch (error) {
     await replyError(message, error);
   }
@@ -147,27 +247,41 @@ async function handleBlacklist(message, args, mode) {
   if (mode === "list") {
     const blacklisted = statements.listBlacklistedUsers.all();
     if (!blacklisted.length) {
-      await message.reply("No users are currently blacklisted.");
+      await replyEmbed(message, {
+        color: "info",
+        title: "Blacklist",
+        description: "No users are currently blacklisted.",
+      });
       return;
     }
 
-    await message.reply(
-      blacklisted
-        .map((entry) => `${entry.discord_tag || entry.discord_user_id} - ${entry.blacklist_reason || "No reason provided"}`)
+    await replyEmbed(message, {
+      color: "warning",
+      title: "Blacklisted Users",
+      description: blacklisted
+        .slice(0, 10)
+        .map((entry) => `• **${entry.discord_tag || entry.discord_user_id}** — ${entry.blacklist_reason || "No reason provided"}`)
         .join("\n"),
-    );
+    });
     return;
   }
 
   const targetRaw = args[0];
   if (!targetRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}${mode === "add" ? "blacklist" : "unblacklist"} {user} ${mode === "add" ? "{reason}" : ""}`.trim());
+    await replyUsage(
+      message,
+      `${config.commandPrefix}${mode === "add" ? "blacklist" : "unblacklist"} {user} ${mode === "add" ? "{reason}" : ""}`.trim(),
+    );
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -182,11 +296,24 @@ async function handleBlacklist(message, args, mode) {
     actorTag: message.author.tag,
   });
 
-  await message.reply(
-    mode === "add"
-      ? `${member.user.tag} is now blacklisted. Reason: ${updated.blacklist_reason || "No reason provided"}`
-      : `${member.user.tag} has been removed from the blacklist.`,
-  );
+  await replyEmbed(message, {
+    color: mode === "add" ? "warning" : "success",
+    title: mode === "add" ? "User Blacklisted" : "User Unblacklisted",
+    description:
+      mode === "add"
+        ? `**${member.user.tag}** is now blacklisted.`
+        : `**${member.user.tag}** has been removed from the blacklist.`,
+    fields:
+      mode === "add"
+        ? [
+            {
+              name: "Reason",
+              value: updated.blacklist_reason || "No reason provided",
+              inline: false,
+            },
+          ]
+        : [],
+  });
 }
 
 async function handleResetHwid(message, args) {
@@ -198,7 +325,11 @@ async function handleResetHwid(message, args) {
     }
     const resolved = await resolveMember(message, args[0]);
     if (!resolved) {
-      await message.reply("I couldn't find that user in this server.");
+      await replyEmbed(message, {
+        color: "error",
+        title: "User Not Found",
+        description: "I couldn't find that user in this server.",
+      });
       return;
     }
     member = resolved;
@@ -210,7 +341,11 @@ async function handleResetHwid(message, args) {
     actorTag: message.author.tag,
   });
 
-  await message.reply(`HWID has been reset for ${member.user.tag}.`);
+  await replyEmbed(message, {
+    color: "success",
+    title: "HWID Reset",
+    description: `HWID has been reset for **${member.user.tag}**.`,
+  });
 }
 
 async function handleBan(message, args) {
@@ -221,13 +356,17 @@ async function handleBan(message, args) {
   const targetRaw = args[0];
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
   if (!targetRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}ban {user} {reason}`);
+    await replyUsage(message, `${config.commandPrefix}ban {user} {reason}`);
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -243,7 +382,18 @@ async function handleBan(message, args) {
     active: 1,
     expires_at: null,
   });
-  await message.reply(`${member.user.tag} has been banned. Reason: ${reason}`);
+  await replyEmbed(message, {
+    color: "warning",
+    title: "User Banned",
+    description: `**${member.user.tag}** has been banned.`,
+    fields: [
+      {
+        name: "Reason",
+        value: reason,
+        inline: false,
+      },
+    ],
+  });
 }
 
 async function handleKick(message, args) {
@@ -254,13 +404,17 @@ async function handleKick(message, args) {
   const targetRaw = args[0];
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
   if (!targetRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}kick {user} {reason}`);
+    await replyUsage(message, `${config.commandPrefix}kick {user} {reason}`);
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -276,7 +430,18 @@ async function handleKick(message, args) {
     active: 0,
     expires_at: null,
   });
-  await message.reply(`${member.user.tag} has been kicked. Reason: ${reason}`);
+  await replyEmbed(message, {
+    color: "warning",
+    title: "User Kicked",
+    description: `**${member.user.tag}** has been kicked.`,
+    fields: [
+      {
+        name: "Reason",
+        value: reason,
+        inline: false,
+      },
+    ],
+  });
 }
 
 async function handleMute(message, args) {
@@ -288,13 +453,17 @@ async function handleMute(message, args) {
   const durationRaw = args[1];
   const reason = args.slice(2).join(" ").trim() || "No reason provided";
   if (!targetRaw || !durationRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}mute {user} {duration} {reason}`);
+    await replyUsage(message, `${config.commandPrefix}mute {user} {duration} {reason}`);
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -313,7 +482,18 @@ async function handleMute(message, args) {
     expires_at: new Date(Date.now() + durationMs).toISOString(),
   });
 
-  await message.reply(`${member.user.tag} has been muted for ${durationRaw}. Reason: ${reason}`);
+  await replyEmbed(message, {
+    color: "warning",
+    title: "User Muted",
+    description: `**${member.user.tag}** has been muted for **${durationRaw}**.`,
+    fields: [
+      {
+        name: "Reason",
+        value: reason,
+        inline: false,
+      },
+    ],
+  });
 }
 
 async function handleRole(message, args) {
@@ -324,13 +504,17 @@ async function handleRole(message, args) {
   const targetRaw = args[0];
   const roleName = args.slice(1).join(" ").trim();
   if (!targetRaw || !roleName) {
-    await message.reply(`Usage: ${config.commandPrefix}role {user} {role}`);
+    await replyUsage(message, `${config.commandPrefix}role {user} {role}`);
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
@@ -339,7 +523,11 @@ async function handleRole(message, args) {
     message.guild.roles.cache.get(roleName);
 
   if (!role) {
-    await message.reply("I couldn't find that role.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "Role Not Found",
+      description: "I couldn't find that role.",
+    });
     return;
   }
 
@@ -355,7 +543,11 @@ async function handleRole(message, args) {
     active: 0,
     expires_at: null,
   });
-  await message.reply(`${role.name} has been added to ${member.user.tag}.`);
+  await replyEmbed(message, {
+    color: "success",
+    title: "Role Added",
+    description: `Added **${role.name}** to **${member.user.tag}**.`,
+  });
 }
 
 async function handleUnban(message, args) {
@@ -365,14 +557,18 @@ async function handleUnban(message, args) {
 
   const targetRaw = args[0];
   if (!targetRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}unban {user}`);
+    await replyUsage(message, `${config.commandPrefix}unban {user}`);
     return;
   }
 
   const userId = targetRaw.replace(/[<@!>]/g, "");
   await message.guild.members.unban(userId);
   statements.liftModerationAction.run(userId, "ban");
-  await message.reply(`User ${userId} has been unbanned.`);
+  await replyEmbed(message, {
+    color: "success",
+    title: "User Unbanned",
+    description: `User **${userId}** has been unbanned.`,
+  });
 }
 
 async function handleUnmute(message, args) {
@@ -382,19 +578,27 @@ async function handleUnmute(message, args) {
 
   const targetRaw = args[0];
   if (!targetRaw) {
-    await message.reply(`Usage: ${config.commandPrefix}unmute {user}`);
+    await replyUsage(message, `${config.commandPrefix}unmute {user}`);
     return;
   }
 
   const member = await resolveMember(message, targetRaw);
   if (!member) {
-    await message.reply("I couldn't find that user in this server.");
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
     return;
   }
 
   await member.timeout(null);
   statements.liftModerationAction.run(member.id, "mute");
-  await message.reply(`${member.user.tag} has been unmuted.`);
+  await replyEmbed(message, {
+    color: "success",
+    title: "User Unmuted",
+    description: `**${member.user.tag}** has been unmuted.`,
+  });
 }
 
 function createBot() {
@@ -478,7 +682,11 @@ function createBot() {
       }
     } catch (error) {
       if (error.code === 50013 || error.code === 50001) {
-        await message.reply("The bot is missing a Discord permission needed for that action.");
+        await replyEmbed(message, {
+          color: "error",
+          title: "Missing Discord Permission",
+          description: "The bot is missing a Discord permission needed for that action.",
+        });
         return;
       }
       await replyError(message, error);
