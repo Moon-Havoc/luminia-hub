@@ -92,11 +92,34 @@ function keyFields(record) {
   ];
 }
 
-function buildEmbed(message, { color = "info", title, description, fields = [] }) {
+function deliveryFields(record) {
+  return [
+    {
+      name: "Roblox User",
+      value: record.roblox_user,
+      inline: true,
+    },
+    {
+      name: "Type",
+      value: record.type,
+      inline: true,
+    },
+    {
+      name: "Expires",
+      value: formatTimestamp(record.expires_at),
+      inline: false,
+    },
+  ];
+}
+
+function createEmbed({ color = "info", title, description, fields = [], footerText }) {
   const embed = new EmbedBuilder()
     .setColor(colorValue(color))
-    .setTimestamp()
-    .setFooter({ text: `Requested by ${message.author.tag}` });
+    .setTimestamp();
+
+  if (footerText) {
+    embed.setFooter({ text: footerText });
+  }
 
   if (title) {
     embed.setTitle(title);
@@ -113,9 +136,22 @@ function buildEmbed(message, { color = "info", title, description, fields = [] }
   return embed;
 }
 
+function buildEmbed(message, payload) {
+  return createEmbed({
+    ...payload,
+    footerText: `Requested by ${message.author.tag}`,
+  });
+}
+
 function replyEmbed(message, payload) {
   return message.reply({
     embeds: [buildEmbed(message, payload)],
+  });
+}
+
+function sendEmbed(target, payload) {
+  return target.send({
+    embeds: [createEmbed(payload)],
   });
 }
 
@@ -175,12 +211,46 @@ async function handleGenerate(message, args, type) {
       actorTag: message.author.tag,
     });
 
-    await replyEmbed(message, {
-      color: type === "premium" ? "info" : "success",
-      title: `${type === "premium" ? "Premium" : "Normal"} Key Created`,
-      description: `Created for **${member.user.tag}**`,
-      fields: keyFields(result.record),
-    });
+    try {
+      await sendEmbed(member.user, {
+        color: type === "premium" ? "info" : "success",
+        title: `${type === "premium" ? "Premium" : "Normal"} Key Ready`,
+        description: `Here is your Luminia Hub access key for **${result.record.roblox_user}**.`,
+        fields: keyFields(result.record),
+        footerText: `Issued by ${message.author.tag}`,
+      });
+
+      await replyEmbed(message, {
+        color: type === "premium" ? "info" : "success",
+        title: `${type === "premium" ? "Premium" : "Normal"} Key Delivered`,
+        description: `The key for **${member.user.tag}** was sent by DM.`,
+        fields: deliveryFields(result.record),
+      });
+    } catch (dmError) {
+      let sentToIssuer = false;
+
+      try {
+        await sendEmbed(message.author, {
+          color: "warning",
+          title: `${type === "premium" ? "Premium" : "Normal"} Key Delivery Failed`,
+          description: `I couldn't DM **${member.user.tag}**, so I'm sending the key to you instead.`,
+          fields: keyFields(result.record),
+          footerText: "Share this manually only if appropriate.",
+        });
+        sentToIssuer = true;
+      } catch (issuerDmError) {
+        sentToIssuer = false;
+      }
+
+      await replyEmbed(message, {
+        color: "warning",
+        title: "Recipient DMs Closed",
+        description: sentToIssuer
+          ? `I created the key for **${member.user.tag}**, but their DMs are closed. I sent the key to your DMs so you can pass it along manually.`
+          : `I created the key for **${member.user.tag}**, but their DMs are closed and I couldn't DM you either. Ask them to enable DMs, then run the command again.`,
+        fields: deliveryFields(result.record),
+      });
+    }
   } catch (error) {
     await replyError(message, error);
   }
