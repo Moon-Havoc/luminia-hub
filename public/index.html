@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luminia Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Sora:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background-orb orb-a"></div>
+    <div class="background-orb orb-b"></div>
+    <main class="page-shell">
+      <section class="hero-card">
+        <p class="eyebrow">Luminia Hub Access Portal</p>
+        <h1>Generate a fresh 24-hour key for your platform users.</h1>
+        <p class="hero-copy">
+          Users can request a normal key from the website, and your Discord staff can issue premium keys or handle moderation directly inside the server.
+        </p>
+        <div class="feature-row">
+          <div class="feature-pill">Format: <strong>LUM_15Characters</strong></div>
+          <div class="feature-pill">Normal keys expire after 24 hours</div>
+          <div class="feature-pill">Bot-powered staff controls</div>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="panel">
+          <div class="panel-heading">
+            <p class="panel-kicker">Website</p>
+            <h2>Generate or renew a normal key</h2>
+          </div>
+          <form id="key-form" class="form-grid">
+            <label>
+              <span>Discord User ID</span>
+              <input id="discordUserId" name="discordUserId" placeholder="123456789012345678" required />
+            </label>
+            <label>
+              <span>Discord Tag or Username</span>
+              <input id="discordTag" name="discordTag" placeholder="user#0001 or user" required />
+            </label>
+            <label>
+              <span>Roblox Username</span>
+              <input id="robloxUser" name="robloxUser" placeholder="RobloxUsername" required />
+            </label>
+            <button type="submit">Generate Key</button>
+          </form>
+          <div id="result" class="result-card hidden"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <p class="panel-kicker">Discord Bot</p>
+            <h2>Built-in commands</h2>
+          </div>
+          <div class="command-list">
+            <code>!prem-gen {user} {robloxuser}</code>
+            <code>!gen-key {user} {robloxuser}</code>
+            <code>!reset_hwid</code>
+            <code>!revoke_key {user} {key}</code>
+            <code>!revoke_prem {user} {key}</code>
+            <code>!blacklists {user}</code>
+            <code>!unblacklist {user}</code>
+            <code>!ban {user} {reason}</code>
+            <code>!kick {user} {reason}</code>
+            <code>!mute {user} {duration} {reason}</code>
+            <code>!role {user} {role}</code>
+            <code>!unban {user}</code>
+            <code>!unmute {user}</code>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+  </html>
+

@@ -1,0 +1,248 @@
+:root {
+  --bg: #09121d;
+  --panel: rgba(11, 24, 38, 0.82);
+  --panel-border: rgba(147, 197, 253, 0.18);
+  --text: #edf6ff;
+  --muted: #a9bfd3;
+  --accent: #86efac;
+  --accent-strong: #34d399;
+  --accent-alt: #7dd3fc;
+  --danger: #fca5a5;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(52, 211, 153, 0.14), transparent 28%),
+    linear-gradient(145deg, #050b14 0%, #0a1725 45%, #11233a 100%);
+  overflow-x: hidden;
+}
+
+.background-orb {
+  position: fixed;
+  border-radius: 999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.orb-a {
+  width: 18rem;
+  height: 18rem;
+  background: rgba(125, 211, 252, 0.2);
+  top: 6rem;
+  left: -5rem;
+}
+
+.orb-b {
+  width: 22rem;
+  height: 22rem;
+  background: rgba(52, 211, 153, 0.18);
+  right: -6rem;
+  bottom: -4rem;
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 3rem 0 4rem;
+}
+
+.hero-card,
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.hero-card {
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.eyebrow,
+.panel-kicker {
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.74rem;
+  color: var(--accent-alt);
+}
+
+h1,
+h2 {
+  font-family: "Sora", sans-serif;
+  line-height: 1.05;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 6vw, 4.9rem);
+  max-width: 11ch;
+}
+
+h2 {
+  font-size: 1.8rem;
+}
+
+.hero-copy {
+  max-width: 48rem;
+  margin: 1.2rem 0 0;
+  color: var(--muted);
+  font-size: 1.08rem;
+}
+
+.feature-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.feature-pill {
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  background: rgba(134, 239, 172, 0.08);
+  border: 1px solid rgba(134, 239, 172, 0.18);
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.panel {
+  padding: 1.5rem;
+}
+
+.panel-heading {
+  margin-bottom: 1.25rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+label span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+input,
+button {
+  font: inherit;
+}
+
+input {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(169, 191, 211, 0.18);
+  background: rgba(7, 15, 24, 0.72);
+  color: var(--text);
+  outline: none;
+}
+
+input:focus {
+  border-color: rgba(125, 211, 252, 0.55);
+  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.14);
+}
+
+button {
+  border: 0;
+  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  cursor: pointer;
+  color: #041019;
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 35px rgba(52, 211, 153, 0.28);
+}
+
+.result-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: rgba(4, 16, 25, 0.9);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+
+.result-card.error {
+  border-color: rgba(252, 165, 165, 0.3);
+}
+
+.result-card.hidden {
+  display: none;
+}
+
+.result-label {
+  margin: 0 0 0.65rem;
+  color: var(--muted);
+}
+
+.key-value {
+  display: inline-block;
+  font-family: "Sora", sans-serif;
+  font-size: 1.15rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  background: rgba(125, 211, 252, 0.08);
+  color: var(--accent);
+}
+
+.command-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.command-list code {
+  display: block;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(7, 15, 24, 0.72);
+  border: 1px solid rgba(169, 191, 211, 0.12);
+  color: #d9f5ff;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 860px) {
+  .page-shell {
+    padding-top: 1.25rem;
+  }
+
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-card,
+  .panel {
+    border-radius: 24px;
+  }
+}
+
