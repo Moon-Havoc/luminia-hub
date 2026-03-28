@@ -64,6 +64,13 @@ db.exec(`
     ON keys(discord_user_id, roblox_user, type, status, expires_at);
 `);
 
+// Preserve lifetime premium keys in existing databases without rebuilding the table.
+db.exec(`
+  UPDATE keys
+  SET expires_at = 'never'
+  WHERE type = 'premium' AND status = 'active' AND expires_at != 'never';
+`);
+
 const statements = {
   upsertUser: db.prepare(`
     INSERT INTO users (discord_user_id, discord_tag, roblox_user, blacklisted, blacklist_reason, updated_at)
@@ -105,7 +112,7 @@ const statements = {
       AND roblox_user = ?
       AND type = ?
       AND status = 'active'
-      AND datetime(expires_at) > datetime('now')
+      AND (expires_at = 'never' OR datetime(expires_at) > datetime('now'))
     ORDER BY datetime(created_at) DESC
     LIMIT 1
   `),
@@ -120,7 +127,9 @@ const statements = {
   expireOldKeys: db.prepare(`
     UPDATE keys
     SET status = 'expired'
-    WHERE status = 'active' AND datetime(expires_at) <= datetime('now')
+    WHERE status = 'active'
+      AND expires_at != 'never'
+      AND datetime(expires_at) <= datetime('now')
   `),
   listKeysForUser: db.prepare(`
     SELECT *
@@ -166,4 +175,3 @@ module.exports = {
   logAction,
   runMaintenance,
 };
-

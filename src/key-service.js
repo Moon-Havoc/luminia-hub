@@ -1,6 +1,7 @@
 const crypto = require("crypto");
-const config = require("./config");
 const { statements, logAction, runMaintenance } = require("./db");
+
+const LIFETIME_EXPIRY = "never";
 
 function nowIso() {
   return new Date().toISOString();
@@ -77,7 +78,7 @@ function createOrReuseKey({
     type,
     status: "active",
     created_at: nowIso(),
-    expires_at: hoursFromNow(type === "premium" ? config.premiumKeyDurationHours : 24),
+    expires_at: type === "premium" ? LIFETIME_EXPIRY : hoursFromNow(24),
   };
 
   statements.insertKey.run(record);
@@ -139,4 +140,3 @@ module.exports = {
   resetHwid,
   setBlacklist,
 };
-

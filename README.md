@@ -8,6 +8,7 @@ Luminia Hub is a combined website and Discord bot for issuing access keys, track
 - SQLite database for keys, users, blacklists, and moderation history
 - Discord bot with the required `!` commands
 - 24-hour expiry for normal keys
+- Premium keys that never expire
 - Key format of `LUM_` followed by 15 characters
 
 ## Commands
@@ -97,4 +98,3 @@ The easiest low-cost split is:
 - Database: keep SQLite for a starter build, but move to Postgres later if you need horizontal scaling
 
 I also included deployment notes in the final handoff so you can choose a provider based on what is free right now.
-

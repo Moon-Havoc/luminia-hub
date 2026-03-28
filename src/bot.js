@@ -64,6 +64,9 @@ function colorValue(color) {
 }
 
 function formatTimestamp(value) {
+  if (!value || value === "never") {
+    return "Never";
+  }
   return new Date(value).toLocaleString();
 }
 

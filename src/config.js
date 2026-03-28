@@ -32,10 +32,8 @@ const config = {
   discordClientId: process.env.DISCORD_CLIENT_ID || "",
   discordGuildId: process.env.DISCORD_GUILD_ID || "",
   adminRoleIds: splitCsv(process.env.ADMIN_ROLE_IDS),
-  premiumKeyDurationHours: Number(process.env.PREMIUM_KEY_DURATION_HOURS || 720),
   siteUrl: process.env.SITE_URL || `http://localhost:${process.env.PORT || 3000}`,
   required,
 };
 
 module.exports = config;
-
