@@ -43,6 +43,7 @@ body {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 38px 38px;
   mask-image: radial-gradient(circle at center, black, transparent 88%);
+  animation: gridShift 20s linear infinite;
 }
 
 .admin-shell {
@@ -70,8 +71,16 @@ body {
 }
 
 .admin-header {
+  position: sticky;
+  top: 0.8rem;
+  z-index: 10;
   gap: 1rem;
   margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(6, 10, 18, 0.72);
+  backdrop-filter: blur(16px);
 }
 
 .admin-brand,
@@ -177,6 +186,7 @@ button {
 .ghost-button:hover,
 button:hover {
   transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
 }
 
 .admin-main {
@@ -190,6 +200,17 @@ button:hover {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.admin-card:hover,
+.library-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(108, 166, 255, 0.24);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
 }
 
 .admin-login {
@@ -213,7 +234,7 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(2.6rem, 5vw, 5rem);
+  font-size: clamp(2.3rem, 4.5vw, 4.3rem);
   max-width: 13ch;
 }
 
@@ -539,6 +560,29 @@ textarea:focus {
   gap: 0.25rem;
 }
 
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px) scale(0.985);
+  transition:
+    opacity 680ms ease,
+    transform 680ms ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@keyframes gridShift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(38px);
+  }
+}
+
 @media (max-width: 1080px) {
   .admin-header,
   .library-head {
@@ -555,6 +599,10 @@ textarea:focus {
 @media (max-width: 760px) {
   .admin-shell {
     width: min(100%, calc(100% - 1rem));
+  }
+
+  .admin-header {
+    position: static;
   }
 
   .field-grid,
@@ -575,5 +623,19 @@ textarea:focus {
 
   .admin-nav {
     flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
   }
 }

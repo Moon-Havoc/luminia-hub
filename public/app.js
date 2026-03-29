@@ -4,6 +4,53 @@ const generateButton = document.getElementById("generate-button");
 const servicePill = document.getElementById("service-pill");
 const prefillBanner = document.getElementById("prefill-banner");
 const prefillCopy = document.getElementById("prefill-copy");
+const terminalLines = [...document.querySelectorAll("[data-terminal-line]")];
+
+function typeTerminalLine(node, text, delay) {
+  window.setTimeout(() => {
+    let index = 0;
+    node.textContent = "";
+
+    function tick() {
+      node.textContent = text.slice(0, index);
+      index += 1;
+      if (index <= text.length) {
+        window.setTimeout(tick, 16);
+      }
+    }
+
+    tick();
+  }, delay);
+}
+
+function animateTerminal() {
+  if (!terminalLines.length) {
+    return;
+  }
+
+  const reduceMotion = window.LuminiaSite?.reduceMotion;
+  if (reduceMotion) {
+    terminalLines.forEach((line) => {
+      line.textContent = line.dataset.text || line.textContent;
+    });
+    return;
+  }
+
+  const queue = terminalLines.map((line) => line.dataset.text || line.textContent);
+
+  function runCycle() {
+    let delay = 0;
+    terminalLines.forEach((line, index) => {
+      line.textContent = "";
+      typeTerminalLine(line, queue[index], delay);
+      delay += queue[index].length * 16 + 280;
+    });
+
+    window.setTimeout(runCycle, delay + 2400);
+  }
+
+  runCycle();
+}
 
 function humanExpiry(value) {
   return value === "never" ? "Never" : new Date(value).toLocaleString();
@@ -44,6 +91,8 @@ function resultChip(type, error) {
 function renderResult(payload, error = false) {
   result.classList.remove("hidden");
   result.classList.toggle("error", error);
+  result.setAttribute("data-reveal", "");
+  result.classList.remove("is-visible");
 
   if (error) {
     result.innerHTML = `
@@ -54,6 +103,9 @@ function renderResult(payload, error = false) {
       <h3>Something needs attention</h3>
       <p>${payload}</p>
     `;
+    window.requestAnimationFrame(() => {
+      window.LuminiaSite?.observeReveal(result, 0);
+    });
     return;
   }
 
@@ -82,6 +134,10 @@ function renderResult(payload, error = false) {
       </article>
     </div>
   `;
+
+  window.requestAnimationFrame(() => {
+    window.LuminiaSite?.observeReveal(result, 0);
+  });
 }
 
 const query = new URLSearchParams(window.location.search);
@@ -144,3 +200,4 @@ result.addEventListener("click", async (event) => {
 });
 
 loadHealth();
+animateTerminal();

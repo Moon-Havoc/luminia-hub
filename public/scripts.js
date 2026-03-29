@@ -176,8 +176,10 @@ function renderScripts() {
       : "No scripts have been published yet. Upload a library item from the admin dashboard first.";
   }
 
-  visibleScripts.forEach((script) => {
-    libraryGrid.appendChild(createCard(script));
+  visibleScripts.forEach((script, index) => {
+    const card = createCard(script);
+    libraryGrid.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 70);
   });
 }
 

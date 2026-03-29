@@ -28,17 +28,21 @@
         <nav class="admin-nav">
           <a href="/">Home</a>
           <a href="/scripts">Scripts</a>
+          <a href="https://discord.gg/vFdWTQ3uKC" target="_blank" rel="noreferrer">Discord</a>
           <span id="admin-api-status" class="status-chip">Checking</span>
         </nav>
 
         <div class="admin-header-actions">
+          <a class="ghost-button" href="https://discord.gg/vFdWTQ3uKC" target="_blank" rel="noreferrer">
+            Community
+          </a>
           <a class="ghost-button" href="/scripts">Open Library</a>
           <button id="logout-button" class="ghost-button hidden" type="button">Log Out</button>
         </div>
       </header>
 
       <main class="admin-main">
-        <section id="admin-login-view" class="admin-card admin-login">
+        <section id="admin-login-view" class="admin-card admin-login" data-reveal>
           <p class="eyebrow">Restricted access</p>
           <h1>Sign in to the Luminia script library panel.</h1>
           <p class="subcopy">
@@ -71,7 +75,7 @@
 
         <section id="admin-dashboard-view" class="hidden">
           <section class="admin-hero">
-            <div class="admin-card hero-copy-card">
+            <div class="admin-card hero-copy-card" data-reveal>
               <p class="eyebrow">Library builder</p>
               <h1>Build the public script shelf your users actually want to browse.</h1>
               <p class="subcopy">
@@ -81,15 +85,15 @@
             </div>
 
             <div class="metric-grid">
-              <article class="metric-card">
+              <article class="metric-card" data-reveal>
                 <span class="metric-label">Signed in</span>
                 <strong id="admin-user-label">-</strong>
               </article>
-              <article class="metric-card">
+              <article class="metric-card" data-reveal>
                 <span class="metric-label">Scripts</span>
                 <strong id="script-count-label">0</strong>
               </article>
-              <article class="metric-card">
+              <article class="metric-card" data-reveal>
                 <span class="metric-label">Public route</span>
                 <strong>/scripts</strong>
               </article>
@@ -97,7 +101,7 @@
           </section>
 
           <section class="workspace-grid">
-            <section class="admin-card editor-card">
+            <section class="admin-card editor-card" data-reveal>
               <div class="panel-heading">
                 <p class="eyebrow">Upload panel</p>
                 <h2>Create or update a library entry</h2>
@@ -185,7 +189,7 @@
             </section>
 
             <aside class="admin-side-column">
-              <section class="admin-card preview-card-shell">
+              <section class="admin-card preview-card-shell" data-reveal>
                 <div class="panel-heading">
                   <p class="eyebrow">Live preview</p>
                   <h2>How this card will look</h2>
@@ -193,7 +197,7 @@
                 <div id="script-preview" class="script-preview"></div>
               </section>
 
-              <section class="admin-card helper-card">
+              <section class="admin-card helper-card" data-reveal>
                 <p class="eyebrow">Distribution note</p>
                 <h2>Loader-ready output</h2>
                 <p class="panel-copy">
@@ -204,7 +208,7 @@
             </aside>
           </section>
 
-          <section class="admin-card library-shell">
+          <section class="admin-card library-shell" data-reveal>
             <div class="library-head">
               <div class="panel-heading">
                 <p class="eyebrow">Published scripts</p>
@@ -228,6 +232,7 @@
       </main>
     </div>
 
+    <script src="/site.js"></script>
     <script src="/admin.js"></script>
   </body>
 </html>

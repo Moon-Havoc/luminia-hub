@@ -304,7 +304,9 @@ function createScriptCard(script, options = {}) {
 
 function renderPreview() {
   scriptPreview.innerHTML = "";
-  scriptPreview.appendChild(createScriptCard(currentDraft()));
+  const previewCard = createScriptCard(currentDraft());
+  previewCard.classList.add("is-visible");
+  scriptPreview.appendChild(previewCard);
 }
 
 function resetScriptForm(options = {}) {
@@ -368,8 +370,10 @@ function renderScripts() {
       : "No scripts uploaded yet. Save your first script to create a public library card.";
   }
 
-  visibleScripts.forEach((script) => {
-    scriptList.appendChild(createScriptCard(script, { admin: true }));
+  visibleScripts.forEach((script, index) => {
+    const card = createScriptCard(script, { admin: true });
+    scriptList.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 70);
   });
 }
 

@@ -39,15 +39,18 @@
             <span class="pill-dot"></span>
             <span>Checking service</span>
           </div>
-          <a class="dashboard-button" href="/admin">Dashboard</a>
+          <a class="top-action-button" href="https://discord.gg/vFdWTQ3uKC" target="_blank" rel="noreferrer">
+            Discord
+          </a>
+          <a class="dashboard-button" href="/admin">Admin</a>
         </div>
       </header>
 
       <main>
         <section class="hero-grid">
-          <div class="hero-copy reveal">
+          <div class="hero-copy" data-reveal>
             <p class="eyebrow">001_LUMINIA_ACCESS_CORE</p>
-            <h1>THE BLUE-LIT KEY ENGINE FOR LUMINIA HUB</h1>
+            <h1>Luminia Hub access, scripts, and Discord control.</h1>
 
             <div class="hero-meta">
               <span class="meta-live">LIVE_STACK</span>
@@ -64,10 +67,18 @@
             <div class="hero-actions">
               <a class="primary-button" href="#access">OPEN_ACCESS_PANEL</a>
               <a class="secondary-button" href="/scripts">VIEW_SCRIPT_LIBRARY</a>
+              <a
+                class="secondary-button"
+                href="https://discord.gg/vFdWTQ3uKC"
+                target="_blank"
+                rel="noreferrer"
+              >
+                JOIN_DISCORD
+              </a>
             </div>
           </div>
 
-          <aside class="hero-terminal reveal delayed">
+          <aside class="hero-terminal" data-reveal>
             <div class="terminal-window">
               <div class="terminal-topbar">
                 <span class="terminal-dot"></span>
@@ -76,29 +87,44 @@
                 <strong>luminia_runtime</strong>
               </div>
 
-              <div class="terminal-body">
-                <p>$ [system] Booting Luminia access engine...</p>
-                <p>$ [web] Key portal online and awaiting requests.</p>
-                <p>$ [discord] Premium issue and revoke routes armed.</p>
-                <p>$ [roblox] Username-bound validation active.</p>
-                <p class="terminal-success">$ [status] Gateway + API synchronized.</p>
+              <div class="terminal-body" id="terminal-body">
+                <p data-terminal-line data-text="$ [system] Booting Luminia access engine...">
+                  $ [system] Booting Luminia access engine...
+                </p>
+                <p data-terminal-line data-text="$ [web] Key portal online and awaiting requests.">
+                  $ [web] Key portal online and awaiting requests.
+                </p>
+                <p data-terminal-line data-text="$ [discord] Premium issue and revoke routes armed.">
+                  $ [discord] Premium issue and revoke routes armed.
+                </p>
+                <p data-terminal-line data-text="$ [roblox] Username-bound validation active.">
+                  $ [roblox] Username-bound validation active.
+                </p>
+                <p
+                  class="terminal-success"
+                  data-terminal-line
+                  data-text="$ [status] Gateway + API synchronized."
+                >
+                  $ [status] Gateway + API synchronized.
+                </p>
+                <div class="terminal-cursor" aria-hidden="true"></div>
               </div>
             </div>
           </aside>
         </section>
 
-        <section class="feature-strip reveal delayed-more">
-          <article class="feature-card">
+        <section class="feature-strip">
+          <article class="feature-card" data-reveal>
             <span>01</span>
             <h2>Normal access</h2>
             <p>Users generate or renew a normal key from the site and reuse it until the 24-hour window ends.</p>
           </article>
-          <article class="feature-card">
+          <article class="feature-card" data-reveal>
             <span>02</span>
             <h2>Premium access</h2>
             <p>Staff issue permanent premium keys through Discord with private DM delivery and revocation notices.</p>
           </article>
-          <article class="feature-card">
+          <article class="feature-card" data-reveal>
             <span>03</span>
             <h2>Script ops</h2>
             <p>Admins upload versioned scripts in the dashboard and get raw URLs ready for loaders or Roblox tooling.</p>
@@ -106,7 +132,7 @@
         </section>
 
         <section id="access" class="content-grid">
-          <section class="panel access-panel reveal">
+          <section class="panel access-panel" data-reveal>
             <div class="panel-head">
               <p class="eyebrow">NORMAL_KEY_PORTAL</p>
               <h2>Generate or renew a user key</h2>
@@ -145,7 +171,7 @@
           </section>
 
           <div class="stacked-panels">
-            <section id="distribution" class="panel reveal delayed">
+            <section id="distribution" class="panel" data-reveal>
               <div class="panel-head">
                 <p class="eyebrow">SCRIPT_DISTRIBUTION</p>
                 <h2>Admin upload pipeline</h2>
@@ -170,7 +196,7 @@
               </div>
             </section>
 
-            <section class="panel reveal delayed-more">
+            <section class="panel" data-reveal>
               <div class="panel-head">
                 <p class="eyebrow">ACCESS_RULES</p>
                 <h2>Rule set</h2>
@@ -202,7 +228,25 @@
           </div>
         </section>
 
-        <section id="commands" class="panel command-panel reveal">
+        <section class="panel community-panel" data-reveal>
+          <div class="community-copy">
+            <p class="eyebrow">COMMUNITY_CHANNEL</p>
+            <h2>Need updates, support, or script drops?</h2>
+            <p>
+              Join the official Luminia Hub Discord to get announcements, talk with staff, and keep up with new
+              releases from the library.
+            </p>
+          </div>
+
+          <div class="community-actions">
+            <a class="primary-button" href="https://discord.gg/vFdWTQ3uKC" target="_blank" rel="noreferrer">
+              JOIN_THE_DISCORD
+            </a>
+            <a class="secondary-button" href="/scripts">BROWSE_SCRIPTS</a>
+          </div>
+        </section>
+
+        <section id="commands" class="panel command-panel" data-reveal>
           <div class="panel-head">
             <p class="eyebrow">DISCORD_OPERATIONS</p>
             <h2>Command surface</h2>
@@ -210,7 +254,7 @@
           </div>
 
           <div class="command-grid">
-            <article class="command-block">
+            <article class="command-block" data-reveal>
               <h3>Access</h3>
               <code>!gen-key {user} {robloxuser}</code>
               <code>!prem-gen {user} {robloxuser}</code>
@@ -219,7 +263,7 @@
               <code>!reset_hwid</code>
             </article>
 
-            <article class="command-block">
+            <article class="command-block" data-reveal>
               <h3>Control</h3>
               <code>!blacklist {user} {reason}</code>
               <code>!blacklists</code>
@@ -228,7 +272,7 @@
               <code>!check-perms</code>
             </article>
 
-            <article class="command-block">
+            <article class="command-block" data-reveal>
               <h3>Moderation</h3>
               <code>!ban {user} {reason}</code>
               <code>!kick {user} {reason}</code>
@@ -242,6 +286,7 @@
       </main>
     </div>
 
+    <script src="/site.js"></script>
     <script src="/app.js"></script>
   </body>
-  </html>
+</html>
