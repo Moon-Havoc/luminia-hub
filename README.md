@@ -74,6 +74,12 @@ Also included:
 - Use `!commands` to show the current command list in Discord.
 - Use `!check-perms` to confirm the bot's server permissions and get a role hierarchy reminder.
 
+## Roblox integration
+
+- The versioned Roblox key GUI script lives at `integrations/roblox/luminia.lua`.
+- It currently points to the live Railway deployment at `https://luminia-hub-production.up.railway.app`.
+- If your production domain changes later, update `SITE_URL` near the bottom of that Lua file.
+
 ## API
 
 ### `POST /api/keys/generate`

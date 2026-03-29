@@ -1,0 +1,202 @@
+--https://discord.gg/yVefqKfU7
+-- Join Luminia Hub!
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ========================
+-- 🎨 COLOR PALETTE
+-- ========================
+local COLORS = {
+    Background = Color3.fromRGB(10, 20, 45),
+    Surface = Color3.fromRGB(20, 40, 80),
+    Accent = Color3.fromRGB(90, 170, 255),
+    Glow = Color3.fromRGB(120, 200, 255),
+    Text = Color3.fromRGB(200, 220, 255),
+    Danger = Color3.fromRGB(255, 80, 80)
+}
+
+-- ========================
+-- 📺 GUI SETUP
+-- ========================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LuminiaKeySystem"
+ScreenGui.Parent = playerGui
+
+local Frame = Instance.new("Frame")
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0, 470, 0, 220)
+Frame.Position = UDim2.new(0.5, -235, 0.5, -110)
+Frame.BackgroundColor3 = COLORS.Surface
+Frame.BackgroundTransparency = 0.15
+Frame.BorderSizePixel = 0
+
+Instance.new("UICorner", Frame)
+
+-- Gradient
+local Gradient = Instance.new("UIGradient")
+Gradient.Parent = Frame
+Gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 30, 70)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 60, 120))
+}
+Gradient.Rotation = 90
+
+-- Glow Stroke
+local Stroke = Instance.new("UIStroke")
+Stroke.Parent = Frame
+Stroke.Color = COLORS.Accent
+Stroke.Thickness = 2
+Stroke.Transparency = 0.2
+
+-- Dragging
+Instance.new("UIDragDetector", Frame)
+
+-- ========================
+-- 🏷 TITLE
+-- ========================
+local Title = Instance.new("TextLabel")
+Title.Parent = Frame
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundTransparency = 1
+Title.Text = "LUMINIA HUB"
+Title.TextColor3 = COLORS.Glow
+Title.TextSize = 32
+Title.Font = Enum.Font.GothamBold
+
+-- Glow animation
+TweenService:Create(
+    Title,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {TextColor3 = COLORS.Accent}
+):Play()
+
+-- ========================
+-- 🔑 INPUT BOX
+-- ========================
+local KeyBox = Instance.new("TextBox")
+KeyBox.Parent = Frame
+KeyBox.Size = UDim2.new(0.9, 0, 0, 45)
+KeyBox.Position = UDim2.new(0.05, 0, 0.35, 0)
+KeyBox.BackgroundColor3 = COLORS.Background
+KeyBox.TextColor3 = COLORS.Accent
+KeyBox.PlaceholderText = "ENTER KEY..."
+KeyBox.Text = ""
+KeyBox.TextSize = 22
+KeyBox.ClearTextOnFocus = false
+KeyBox.Font = Enum.Font.Gotham
+
+Instance.new("UICorner", KeyBox)
+
+local InputStroke = Instance.new("UIStroke")
+InputStroke.Parent = KeyBox
+InputStroke.Color = COLORS.Accent
+InputStroke.Transparency = 0.5
+
+-- ========================
+-- 🔘 BUTTON FUNCTION
+-- ========================
+local function createButton(text, position)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Frame
+    btn.Size = UDim2.new(0.4, 0, 0, 40)
+    btn.Position = position
+    btn.BackgroundColor3 = COLORS.Background
+    btn.TextColor3 = COLORS.Text
+    btn.Text = text
+    btn.TextSize = 18
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+
+    Instance.new("UICorner", btn)
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = btn
+    stroke.Color = COLORS.Accent
+    stroke.Transparency = 0.4
+
+    -- Hover Anim
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
+            BackgroundColor3 = COLORS.Surface
+        }):Play()
+    end)
+
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
+            BackgroundColor3 = COLORS.Background
+        }):Play()
+    end)
+
+    return btn
+end
+
+local GetKeyBtn = createButton("Get Key", UDim2.new(0.05, 0, 0.7, 0))
+local VerifyBtn = createButton("Verify", UDim2.new(0.55, 0, 0.7, 0))
+
+-- ========================
+-- 🌐 LOGIC
+-- ========================
+
+local SITE_URL = "https://luminia-hub-production.up.railway.app"
+local API_URL = SITE_URL .. "/api/keys/validate"
+
+local function setStatus(text, color)
+    KeyBox.Text = text
+    KeyBox.TextColor3 = color
+end
+
+GetKeyBtn.MouseButton1Click:Connect(function()
+    local keyUrl = SITE_URL .. "/?robloxUser=" .. HttpService:UrlEncode(player.Name)
+    setclipboard(keyUrl)
+    setStatus("KEY LINK COPIED", COLORS.Glow)
+end)
+
+VerifyBtn.MouseButton1Click:Connect(function()
+    local key = KeyBox.Text
+    local username = player.Name
+
+    if key == "" then return end
+
+    local success, response = pcall(function()
+        return HttpService:PostAsync(
+            API_URL,
+            HttpService:JSONEncode({
+                key = key,
+                robloxUser = username
+            }),
+            Enum.HttpContentType.ApplicationJson
+        )
+    end)
+
+    if not success then
+        warn("Request failed")
+        setStatus("REQUEST FAILED", COLORS.Danger)
+        return
+    end
+
+    local decoded, data = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+
+    if not decoded or not data then
+        setStatus("BAD RESPONSE", COLORS.Danger)
+        return
+    end
+
+    if data.valid then
+        setStatus("ACCESS GRANTED", COLORS.Glow)
+
+        task.wait(1)
+
+        ScreenGui:Destroy()
+        -- loadstring here
+
+    else
+        setStatus("INVALID KEY", COLORS.Danger)
+    end
+end)
