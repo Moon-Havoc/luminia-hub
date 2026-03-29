@@ -305,6 +305,7 @@ h3 {
 
 .metric-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -330,6 +331,33 @@ h3 {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
   gap: 1rem;
+}
+
+.control-shell,
+.inventory-card {
+  padding: 1.45rem;
+}
+
+.ops-grid,
+.inventory-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ops-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.inventory-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quick-panel {
+  padding: 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(108, 166, 255, 0.12);
+  background: rgba(8, 13, 22, 0.72);
 }
 
 .admin-side-column {
@@ -361,12 +389,14 @@ label span {
 }
 
 input,
+select,
 textarea,
 button {
   font: inherit;
 }
 
 input,
+select,
 textarea {
   width: 100%;
   padding: 1rem;
@@ -383,9 +413,22 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: rgba(127, 197, 255, 0.44);
   box-shadow: 0 0 0 4px rgba(90, 168, 255, 0.12);
+}
+
+select {
+  appearance: none;
+}
+
+.compact-form {
+  margin-top: 1rem;
+}
+
+.split-actions {
+  flex-wrap: wrap;
 }
 
 .search-field {
@@ -596,6 +639,92 @@ textarea:focus {
   gap: 0.25rem;
 }
 
+.data-stack {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.data-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.3rem;
+  border: 1px solid rgba(108, 166, 255, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(90, 168, 255, 0.12), transparent 40%),
+    rgba(7, 12, 20, 0.86);
+}
+
+.data-card-top {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.data-card-title {
+  font-size: 1.15rem;
+  line-height: 1.02;
+}
+
+.data-card-summary,
+.data-card-meta {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.data-card-summary {
+  color: var(--muted-strong);
+  word-break: break-word;
+}
+
+.data-card-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.data-pill-row,
+.data-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.data-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  border: 1px solid rgba(135, 235, 255, 0.14);
+  background: rgba(10, 22, 36, 0.86);
+}
+
+.data-pill.tone-stable {
+  color: var(--good);
+}
+
+.data-pill.tone-beta {
+  color: var(--accent-bright);
+}
+
+.data-pill.tone-maintenance {
+  color: var(--warn);
+}
+
+.data-pill.tone-dormant {
+  color: var(--danger);
+}
+
+.small-button {
+  padding: 0.8rem 0.95rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 [data-reveal] {
   opacity: 0;
   transform: translateY(22px) scale(0.985);
@@ -627,7 +756,10 @@ textarea:focus {
   }
 
   .admin-hero,
-  .workspace-grid {
+  .workspace-grid,
+  .ops-grid,
+  .inventory-grid,
+  .metric-grid {
     grid-template-columns: 1fr;
   }
 }

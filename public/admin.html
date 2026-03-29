@@ -89,14 +89,14 @@
                 <img class="admin-hero-logo" src="/assets/luminia-logo.png" alt="Luminia Hub logo" />
                 <div>
                   <strong>LUMINIA HUB</strong>
-                  <span>Library builder</span>
+                  <span>Operations dashboard</span>
                 </div>
               </div>
-              <p class="eyebrow">Library builder</p>
-              <h1>Build the public script shelf your users actually want to browse.</h1>
+              <p class="eyebrow">Control room</p>
+              <h1>Run keys, users, scripts, and activity from one Luminia dashboard.</h1>
               <p class="subcopy">
-                Every upload can now carry art, place IDs, feature tags, live status, and a one-click loader action so
-                the public library feels curated instead of dumped.
+                This panel now ties together the live key system, user records, blacklist flow, audit trail, and
+                script library so you can manage the whole Luminia stack without hopping between pages.
               </p>
             </div>
 
@@ -110,16 +110,230 @@
                 <strong id="script-count-label">0</strong>
               </article>
               <article class="metric-card" data-reveal>
-                <span class="metric-label">Public route</span>
-                <strong>/scripts</strong>
+                <span class="metric-label">Active keys</span>
+                <strong id="active-key-label">0</strong>
+              </article>
+              <article class="metric-card" data-reveal>
+                <span class="metric-label">Premium keys</span>
+                <strong id="premium-key-label">0</strong>
+              </article>
+              <article class="metric-card" data-reveal>
+                <span class="metric-label">Users</span>
+                <strong id="total-user-label">0</strong>
+              </article>
+              <article class="metric-card" data-reveal>
+                <span class="metric-label">Blacklisted</span>
+                <strong id="blacklisted-user-label">0</strong>
+              </article>
+              <article class="metric-card" data-reveal>
+                <span class="metric-label">Active actions</span>
+                <strong id="active-moderation-label">0</strong>
+              </article>
+              <article class="metric-card" data-reveal>
+                <span class="metric-label">Recent logs</span>
+                <strong id="audit-count-label">0</strong>
               </article>
             </div>
+          </section>
+
+          <section class="admin-card control-shell" id="operations" data-reveal>
+            <div class="library-head">
+              <div class="panel-heading">
+                <p class="eyebrow">Operations</p>
+                <h2>Run live admin actions</h2>
+                <p class="panel-copy">
+                  Issue keys, revoke access, reset HWIDs, and manage blacklist state directly from the website.
+                </p>
+              </div>
+
+              <button id="dashboard-refresh-button" class="ghost-button" type="button">Refresh Live Data</button>
+            </div>
+
+            <div class="ops-grid">
+              <section class="quick-panel">
+                <div class="panel-heading">
+                  <p class="eyebrow">Key issuance</p>
+                  <h3>Create a key</h3>
+                </div>
+
+                <form id="issue-key-form" class="admin-form compact-form">
+                  <div class="field-grid">
+                    <label>
+                      <span>Discord User ID</span>
+                      <input id="issue-discord-id" placeholder="123456789012345678" required />
+                    </label>
+                    <label>
+                      <span>Discord Tag</span>
+                      <input id="issue-discord-tag" placeholder="user#0001" />
+                    </label>
+                  </div>
+
+                  <div class="field-grid">
+                    <label>
+                      <span>Roblox Username</span>
+                      <input id="issue-roblox-user" placeholder="Rarikk67" required />
+                    </label>
+                    <label>
+                      <span>Key Type</span>
+                      <select id="issue-key-type">
+                        <option value="normal">Normal (24h)</option>
+                        <option value="premium">Premium (Never Expires)</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="admin-form-actions">
+                    <button id="issue-key-button" type="submit">Issue Key</button>
+                  </div>
+                </form>
+
+                <div id="issue-key-feedback" class="admin-feedback hidden"></div>
+              </section>
+
+              <section class="quick-panel">
+                <div class="panel-heading">
+                  <p class="eyebrow">User controls</p>
+                  <h3>Blacklist and HWID tools</h3>
+                </div>
+
+                <form id="user-action-form" class="admin-form compact-form">
+                  <div class="field-grid">
+                    <label>
+                      <span>Discord User ID</span>
+                      <input id="user-discord-id" placeholder="123456789012345678" required />
+                    </label>
+                    <label>
+                      <span>Discord Tag</span>
+                      <input id="user-discord-tag" placeholder="user#0001" />
+                    </label>
+                  </div>
+
+                  <label>
+                    <span>Roblox Username</span>
+                    <input id="user-roblox-user" placeholder="Rarikk67" />
+                  </label>
+
+                  <label>
+                    <span>Blacklist Reason</span>
+                    <textarea
+                      id="user-blacklist-reason"
+                      rows="3"
+                      placeholder="Reason shown in user history and logs"
+                    ></textarea>
+                  </label>
+
+                  <div class="admin-form-actions split-actions">
+                    <button id="blacklist-user-button" type="button">Blacklist</button>
+                    <button id="unblacklist-user-button" class="ghost-button" type="button">Unblacklist</button>
+                    <button id="reset-hwid-button" class="ghost-button" type="button">Reset HWID</button>
+                  </div>
+                </form>
+
+                <div id="user-action-feedback" class="admin-feedback hidden"></div>
+              </section>
+
+              <section class="quick-panel">
+                <div class="panel-heading">
+                  <p class="eyebrow">Key control</p>
+                  <h3>Revoke a key</h3>
+                </div>
+
+                <form id="revoke-key-form" class="admin-form compact-form">
+                  <label>
+                    <span>Key</span>
+                    <input id="revoke-key-input" placeholder="LUM_XXXXXXXXXXXXXXX" required />
+                  </label>
+
+                  <label>
+                    <span>Reason</span>
+                    <textarea
+                      id="revoke-reason-input"
+                      rows="3"
+                      placeholder="Revoked by admin request"
+                    ></textarea>
+                  </label>
+
+                  <div class="admin-form-actions">
+                    <button id="revoke-key-button" type="submit">Revoke Key</button>
+                  </div>
+                </form>
+
+                <div id="revoke-key-feedback" class="admin-feedback hidden"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="inventory-grid" id="inventory">
+            <section class="admin-card inventory-card" data-reveal>
+              <div class="library-head">
+                <div class="panel-heading">
+                  <p class="eyebrow">Inventory</p>
+                  <h2>Key ledger</h2>
+                  <p class="panel-copy">Search issued, active, premium, revoked, and expired keys.</p>
+                </div>
+
+                <label class="search-field">
+                  <span>Search keys</span>
+                  <input id="key-search" placeholder="Search key, Roblox user, Discord ID, type, or status..." />
+                </label>
+              </div>
+
+              <div id="key-list" class="data-stack"></div>
+            </section>
+
+            <section class="admin-card inventory-card" data-reveal>
+              <div class="library-head">
+                <div class="panel-heading">
+                  <p class="eyebrow">Directory</p>
+                  <h2>User records</h2>
+                  <p class="panel-copy">Track blacklist state, HWID presence, and linked Roblox names.</p>
+                </div>
+
+                <label class="search-field">
+                  <span>Search users</span>
+                  <input id="user-search" placeholder="Search Discord ID, tag, Roblox user, or blacklist reason..." />
+                </label>
+              </div>
+
+              <div id="user-list" class="data-stack"></div>
+            </section>
+          </section>
+
+          <section class="inventory-grid">
+            <section class="admin-card inventory-card" data-reveal>
+              <div class="library-head">
+                <div class="panel-heading">
+                  <p class="eyebrow">Activity</p>
+                  <h2>Audit stream</h2>
+                  <p class="panel-copy">Recent admin, key, and moderation events from the shared system log.</p>
+                </div>
+
+                <label class="search-field">
+                  <span>Search activity</span>
+                  <input id="audit-search" placeholder="Search actor, action, target, or details..." />
+                </label>
+              </div>
+
+              <div id="audit-list" class="data-stack"></div>
+            </section>
+
+            <section class="admin-card inventory-card" data-reveal>
+              <div class="library-head">
+                <div class="panel-heading">
+                  <p class="eyebrow">Moderation</p>
+                  <h2>Stored moderation actions</h2>
+                  <p class="panel-copy">Live and historical moderation entries written by the Discord bot.</p>
+                </div>
+              </div>
+
+              <div id="moderation-list" class="data-stack"></div>
+            </section>
           </section>
 
           <section class="workspace-grid">
             <section class="admin-card editor-card" data-reveal>
               <div class="panel-heading">
-                <p class="eyebrow">Upload panel</p>
+                <p class="eyebrow">Script studio</p>
                 <h2>Create or update a library entry</h2>
                 <p class="panel-copy">
                   Save by slug. If the slug already exists, the script card and raw endpoint will update in place.

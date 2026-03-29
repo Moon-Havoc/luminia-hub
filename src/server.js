@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const config = require("./config");
 const { statements, runMaintenance } = require("./db");
-const { createOrReuseKey, validateKey } = require("./key-service");
+const { createOrReuseKey, revokeKey, resetHwid, setBlacklist, validateKey } = require("./key-service");
 const {
   authenticateAdmin,
   clearAdminCookie,
@@ -101,6 +101,51 @@ function respondWithValidationResult(res, key, robloxUser) {
       error: error.message,
     });
   }
+}
+
+function keyIsActive(record) {
+  if (!record || record.status !== "active") {
+    return false;
+  }
+
+  if (record.expires_at === "never") {
+    return true;
+  }
+
+  const expiresAt = Date.parse(record.expires_at);
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
+function adminActorTag(adminUser) {
+  return `admin:${adminUser}`;
+}
+
+function getDashboardPayload() {
+  runMaintenance();
+
+  const scripts = statements.listScriptsWithContent.all();
+  const keys = statements.listAllKeys.all();
+  const users = statements.listUsers.all();
+  const auditLogs = statements.listAuditLogs.all();
+  const moderationActions = statements.listModerationActions.all();
+
+  return {
+    overview: {
+      totalScripts: scripts.length,
+      totalKeys: keys.length,
+      activeKeys: keys.filter(keyIsActive).length,
+      premiumKeys: keys.filter((record) => record.type === "premium").length,
+      totalUsers: users.length,
+      blacklistedUsers: users.filter((record) => record.blacklisted).length,
+      activeModeration: moderationActions.filter((record) => record.active).length,
+      recentAuditEvents: auditLogs.length,
+    },
+    scripts,
+    keys,
+    users,
+    auditLogs,
+    moderationActions,
+  };
 }
 
 app.get("/api/health", (req, res) => {
@@ -204,6 +249,13 @@ app.get("/api/admin/scripts", requireAdminApi, (req, res) => {
   });
 });
 
+app.get("/api/admin/dashboard", requireAdminApi, (req, res) => {
+  return res.json({
+    ok: true,
+    ...getDashboardPayload(),
+  });
+});
+
 app.get("/api/scripts", (req, res) => {
   return res.json({
     ok: true,
@@ -222,6 +274,166 @@ app.post("/api/admin/scripts", requireAdminApi, (req, res) => {
     return res.json({
       ok: true,
       script: statements.findScriptBySlug.get(script.slug),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/keys/issue", requireAdminApi, (req, res) => {
+  try {
+    const discordUserId = String(req.body?.discordUserId || "").trim();
+    const discordTag = String(req.body?.discordTag || discordUserId).trim();
+    const robloxUser = String(req.body?.robloxUser || "").trim();
+    const type = String(req.body?.type || "normal").trim().toLowerCase();
+
+    if (!discordUserId || !robloxUser) {
+      throw new Error("discordUserId and robloxUser are required.");
+    }
+
+    if (!["normal", "premium"].includes(type)) {
+      throw new Error("type must be normal or premium.");
+    }
+
+    const result = createOrReuseKey({
+      discordUserId,
+      discordTag,
+      robloxUser,
+      type,
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      created: result.created,
+      record: result.record,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/keys/revoke", requireAdminApi, (req, res) => {
+  try {
+    const key = String(req.body?.key || "").trim();
+    const reason = String(req.body?.reason || "Revoked by administrator").trim();
+
+    if (!key) {
+      throw new Error("Key is required.");
+    }
+
+    const updated = revokeKey({
+      key,
+      reason,
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      record: updated,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/users/blacklist", requireAdminApi, (req, res) => {
+  try {
+    const discordUserId = String(req.body?.discordUserId || "").trim();
+    const discordTag = String(req.body?.discordTag || discordUserId).trim();
+    const robloxUser = String(req.body?.robloxUser || "").trim();
+    const reason = String(req.body?.reason || "").trim();
+
+    if (!discordUserId) {
+      throw new Error("discordUserId is required.");
+    }
+
+    const updated = setBlacklist({
+      discordUserId,
+      discordTag,
+      robloxUser,
+      blacklisted: true,
+      reason: reason || "Blacklisted by administrator",
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      user: updated,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/users/unblacklist", requireAdminApi, (req, res) => {
+  try {
+    const discordUserId = String(req.body?.discordUserId || "").trim();
+    const discordTag = String(req.body?.discordTag || discordUserId).trim();
+    const robloxUser = String(req.body?.robloxUser || "").trim();
+
+    if (!discordUserId) {
+      throw new Error("discordUserId is required.");
+    }
+
+    const updated = setBlacklist({
+      discordUserId,
+      discordTag,
+      robloxUser,
+      blacklisted: false,
+      reason: null,
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      user: updated,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/users/reset-hwid", requireAdminApi, (req, res) => {
+  try {
+    const discordUserId = String(req.body?.discordUserId || "").trim();
+
+    if (!discordUserId) {
+      throw new Error("discordUserId is required.");
+    }
+
+    resetHwid({
+      discordUserId,
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      dashboard: getDashboardPayload(),
     });
   } catch (error) {
     return res.status(400).json({

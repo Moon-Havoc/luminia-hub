@@ -7,7 +7,39 @@ const logoutButton = document.getElementById("logout-button");
 const configWarning = document.getElementById("admin-config-warning");
 const adminUserLabel = document.getElementById("admin-user-label");
 const scriptCountLabel = document.getElementById("script-count-label");
+const activeKeyLabel = document.getElementById("active-key-label");
+const premiumKeyLabel = document.getElementById("premium-key-label");
+const totalUserLabel = document.getElementById("total-user-label");
+const blacklistedUserLabel = document.getElementById("blacklisted-user-label");
+const activeModerationLabel = document.getElementById("active-moderation-label");
+const auditCountLabel = document.getElementById("audit-count-label");
 const adminApiStatus = document.getElementById("admin-api-status");
+const dashboardRefreshButton = document.getElementById("dashboard-refresh-button");
+
+const issueKeyForm = document.getElementById("issue-key-form");
+const issueDiscordId = document.getElementById("issue-discord-id");
+const issueDiscordTag = document.getElementById("issue-discord-tag");
+const issueRobloxUser = document.getElementById("issue-roblox-user");
+const issueKeyType = document.getElementById("issue-key-type");
+const issueKeyButton = document.getElementById("issue-key-button");
+const issueKeyFeedback = document.getElementById("issue-key-feedback");
+
+const userActionForm = document.getElementById("user-action-form");
+const userDiscordId = document.getElementById("user-discord-id");
+const userDiscordTag = document.getElementById("user-discord-tag");
+const userRobloxUser = document.getElementById("user-roblox-user");
+const userBlacklistReason = document.getElementById("user-blacklist-reason");
+const blacklistUserButton = document.getElementById("blacklist-user-button");
+const unblacklistUserButton = document.getElementById("unblacklist-user-button");
+const resetHwidButton = document.getElementById("reset-hwid-button");
+const userActionFeedback = document.getElementById("user-action-feedback");
+
+const revokeKeyForm = document.getElementById("revoke-key-form");
+const revokeKeyInput = document.getElementById("revoke-key-input");
+const revokeReasonInput = document.getElementById("revoke-reason-input");
+const revokeKeyButton = document.getElementById("revoke-key-button");
+const revokeKeyFeedback = document.getElementById("revoke-key-feedback");
+
 const scriptForm = document.getElementById("script-form");
 const scriptEditId = document.getElementById("script-edit-id");
 const scriptTitle = document.getElementById("script-title");
@@ -27,7 +59,23 @@ const scriptEmptyState = document.getElementById("script-empty-state");
 const scriptPreview = document.getElementById("script-preview");
 const scriptSearch = document.getElementById("script-search");
 
-let scripts = [];
+const keySearch = document.getElementById("key-search");
+const userSearch = document.getElementById("user-search");
+const auditSearch = document.getElementById("audit-search");
+const keyList = document.getElementById("key-list");
+const userList = document.getElementById("user-list");
+const auditList = document.getElementById("audit-list");
+const moderationList = document.getElementById("moderation-list");
+
+const state = {
+  overview: {},
+  scripts: [],
+  keys: [],
+  users: [],
+  auditLogs: [],
+  moderationActions: [],
+};
+
 let slugEditedManually = false;
 
 function setFeedback(node, message, type) {
@@ -79,7 +127,7 @@ function toneFromStatus(label) {
     return "maintenance";
   }
 
-  if (value.includes("offline") || value.includes("private") || value.includes("down")) {
+  if (value.includes("offline") || value.includes("private") || value.includes("down") || value.includes("revoked")) {
     return "dormant";
   }
 
@@ -113,7 +161,7 @@ async function requestJson(url, options = {}) {
     credentials: "same-origin",
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
   });
@@ -146,13 +194,42 @@ async function copyText(value, successLabel, fallbackNode) {
   }
 }
 
-async function refreshHealth() {
-  try {
-    const payload = await requestJson("/api/health", { headers: {} });
-    adminApiStatus.textContent = `Live • ${new Date(payload.time).toLocaleTimeString()}`;
-  } catch (error) {
-    adminApiStatus.textContent = "Offline";
+function setBusy(button, busy, busyLabel) {
+  if (!button) {
+    return;
   }
+
+  if (!button.dataset.idleLabel) {
+    button.dataset.idleLabel = button.textContent;
+  }
+
+  button.disabled = busy;
+  button.textContent = busy ? busyLabel : button.dataset.idleLabel;
+}
+
+function formatTimestamp(value) {
+  if (!value || value === "never") {
+    return "Never";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
+function keyIsActive(record) {
+  if (!record || record.status !== "active") {
+    return false;
+  }
+
+  if (record.expires_at === "never") {
+    return true;
+  }
+
+  return Date.parse(record.expires_at) > Date.now();
 }
 
 function currentDraft() {
@@ -237,7 +314,6 @@ function createScriptCard(script, options = {}) {
   top.append(placeChip, statusRow, title, description, featureRow);
 
   const footer = document.createElement("div");
-
   const meta = document.createElement("div");
   meta.className = "library-meta";
 
@@ -278,26 +354,82 @@ function createScriptCard(script, options = {}) {
     deleteButton.textContent = "Delete";
 
     actions.append(editButton, copyLoaderButton, copyRawButton, deleteButton);
-  } else {
-    const getScriptButton = document.createElement("button");
-    getScriptButton.type = "button";
-    getScriptButton.dataset.copyLoader = script.slug;
-    getScriptButton.dataset.idleLabel = "Get Script";
-    getScriptButton.textContent = "Get Script";
-
-    const rawLink = document.createElement("a");
-    rawLink.className = "ghost-button";
-    rawLink.href = rawUrlFor(script.slug);
-    rawLink.target = "_blank";
-    rawLink.rel = "noreferrer";
-    rawLink.textContent = "Raw";
-
-    actions.append(getScriptButton, rawLink);
   }
 
   footer.append(meta, actions);
   body.append(top, footer);
   card.appendChild(body);
+
+  return card;
+}
+
+function createPill(text, tone = "stable") {
+  const pill = document.createElement("span");
+  pill.className = `data-pill tone-${tone}`;
+  pill.textContent = text;
+  return pill;
+}
+
+function createActionButton(label, dataset, tone = "ghost") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.className = tone === "ghost" ? "ghost-button small-button" : "small-button";
+  Object.entries(dataset).forEach(([key, value]) => {
+    button.dataset[key] = value;
+  });
+  return button;
+}
+
+function createMetaText(items) {
+  return items.filter(Boolean).join(" • ");
+}
+
+function createEmptyState(message) {
+  const empty = document.createElement("div");
+  empty.className = "empty-state";
+  empty.textContent = message;
+  return empty;
+}
+
+function createDataCard({ title, summary, meta, pills = [], actions = [] }) {
+  const card = document.createElement("article");
+  card.className = "data-card";
+
+  const top = document.createElement("div");
+  top.className = "data-card-top";
+
+  const titleNode = document.createElement("h3");
+  titleNode.className = "data-card-title";
+  titleNode.textContent = title;
+
+  const summaryNode = document.createElement("p");
+  summaryNode.className = "data-card-summary";
+  summaryNode.textContent = summary;
+
+  const metaNode = document.createElement("div");
+  metaNode.className = "data-card-meta";
+  metaNode.textContent = meta;
+
+  const pillRow = document.createElement("div");
+  pillRow.className = "data-pill-row";
+  pills.forEach((pill) => {
+    pillRow.appendChild(pill);
+  });
+
+  top.append(titleNode, summaryNode, metaNode);
+  if (pills.length) {
+    top.appendChild(pillRow);
+  }
+
+  card.appendChild(top);
+
+  if (actions.length) {
+    const footer = document.createElement("div");
+    footer.className = "data-card-actions";
+    actions.forEach((action) => footer.appendChild(action));
+    card.appendChild(footer);
+  }
 
   return card;
 }
@@ -315,6 +447,7 @@ function resetScriptForm(options = {}) {
   scriptForm.reset();
   slugEditedManually = false;
   scriptSaveButton.textContent = "Save Script";
+  scriptSaveButton.dataset.idleLabel = "Save Script";
   if (clearMessage) {
     clearFeedback(scriptFeedback);
   }
@@ -333,17 +466,45 @@ function loadScriptIntoForm(script) {
   scriptContent.value = script.content;
   slugEditedManually = true;
   scriptSaveButton.textContent = "Update Script";
+  scriptSaveButton.dataset.idleLabel = "Update Script";
   renderPreview();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function applyDashboard(payload) {
+  state.overview = payload.overview || {};
+  state.scripts = payload.scripts || [];
+  state.keys = payload.keys || [];
+  state.users = payload.users || [];
+  state.auditLogs = payload.auditLogs || [];
+  state.moderationActions = payload.moderationActions || [];
+  renderDashboard();
+}
+
+function renderMetrics() {
+  const overview = state.overview || {};
+  scriptCountLabel.textContent = String(overview.totalScripts ?? state.scripts.length);
+  activeKeyLabel.textContent = String(overview.activeKeys ?? state.keys.filter(keyIsActive).length);
+  premiumKeyLabel.textContent = String(
+    overview.premiumKeys ?? state.keys.filter((record) => record.type === "premium").length,
+  );
+  totalUserLabel.textContent = String(overview.totalUsers ?? state.users.length);
+  blacklistedUserLabel.textContent = String(
+    overview.blacklistedUsers ?? state.users.filter((record) => record.blacklisted).length,
+  );
+  activeModerationLabel.textContent = String(
+    overview.activeModeration ?? state.moderationActions.filter((record) => record.active).length,
+  );
+  auditCountLabel.textContent = String(overview.recentAuditEvents ?? state.auditLogs.length);
 }
 
 function filteredScripts() {
   const query = scriptSearch.value.trim().toLowerCase();
   if (!query) {
-    return scripts;
+    return state.scripts;
   }
 
-  return scripts.filter((script) =>
+  return state.scripts.filter((script) =>
     [
       script.title,
       script.slug,
@@ -359,13 +520,78 @@ function filteredScripts() {
   );
 }
 
+function filteredKeys() {
+  const query = keySearch.value.trim().toLowerCase();
+  if (!query) {
+    return state.keys;
+  }
+
+  return state.keys.filter((record) =>
+    [
+      record.key,
+      record.roblox_user,
+      record.discord_user_id,
+      record.discord_tag,
+      record.type,
+      record.status,
+      record.revoked_reason,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query),
+  );
+}
+
+function filteredUsers() {
+  const query = userSearch.value.trim().toLowerCase();
+  if (!query) {
+    return state.users;
+  }
+
+  return state.users.filter((record) =>
+    [
+      record.discord_user_id,
+      record.discord_tag,
+      record.roblox_user,
+      record.blacklist_reason,
+      record.active_hwid ? "hwid" : "",
+      record.blacklisted ? "blacklisted" : "clear",
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query),
+  );
+}
+
+function filteredAuditLogs() {
+  const query = auditSearch.value.trim().toLowerCase();
+  if (!query) {
+    return state.auditLogs;
+  }
+
+  return state.auditLogs.filter((record) =>
+    [record.actor_id, record.actor_tag, record.action, record.target, record.details]
+      .join(" ")
+      .toLowerCase()
+      .includes(query),
+  );
+}
+
+function userKeyStats(discordUserId) {
+  const keys = state.keys.filter((record) => record.discord_user_id === discordUserId);
+  return {
+    total: keys.length,
+    active: keys.filter(keyIsActive).length,
+    premium: keys.filter((record) => record.type === "premium").length,
+  };
+}
+
 function renderScripts() {
   const visibleScripts = filteredScripts();
   scriptList.innerHTML = "";
-  scriptCountLabel.textContent = String(scripts.length);
   scriptEmptyState.classList.toggle("hidden", visibleScripts.length > 0);
   if (!visibleScripts.length) {
-    scriptEmptyState.textContent = scripts.length
+    scriptEmptyState.textContent = state.scripts.length
       ? "No scripts match that search yet."
       : "No scripts uploaded yet. Save your first script to create a public library card.";
   }
@@ -373,14 +599,238 @@ function renderScripts() {
   visibleScripts.forEach((script, index) => {
     const card = createScriptCard(script, { admin: true });
     scriptList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 70);
+    window.LuminiaSite?.observeReveal(card, index * 50);
   });
 }
 
-async function loadScripts() {
-  const payload = await requestJson("/api/admin/scripts", { headers: {} });
-  scripts = payload.scripts || [];
+function renderKeys() {
+  const visibleKeys = filteredKeys();
+  keyList.innerHTML = "";
+
+  if (!visibleKeys.length) {
+    keyList.appendChild(createEmptyState("No keys match the current search."));
+    return;
+  }
+
+  visibleKeys.forEach((record, index) => {
+    const pills = [
+      createPill(record.type === "premium" ? "Premium" : "Normal", record.type === "premium" ? "beta" : "stable"),
+      createPill(record.status, toneFromStatus(record.status)),
+      createPill(keyIsActive(record) ? "Live" : "Inactive", keyIsActive(record) ? "stable" : "dormant"),
+    ];
+
+    const actions = [
+      createActionButton("Copy Key", { copyKey: record.key }),
+      createActionButton("Revoke", { fillRevoke: record.key }, "primary"),
+    ];
+
+    const card = createDataCard({
+      title: record.roblox_user || record.key,
+      summary: record.key,
+      meta: createMetaText([
+        record.discord_tag || record.discord_user_id || "No Discord tag",
+        `Created ${formatTimestamp(record.created_at)}`,
+        `Expires ${formatTimestamp(record.expires_at)}`,
+      ]),
+      pills,
+      actions,
+    });
+
+    keyList.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 30);
+  });
+}
+
+function renderUsers() {
+  const visibleUsers = filteredUsers();
+  userList.innerHTML = "";
+
+  if (!visibleUsers.length) {
+    userList.appendChild(createEmptyState("No users match the current search."));
+    return;
+  }
+
+  visibleUsers.forEach((record, index) => {
+    const stats = userKeyStats(record.discord_user_id);
+    const pills = [
+      createPill(record.blacklisted ? "Blacklisted" : "Clear", record.blacklisted ? "dormant" : "stable"),
+      createPill(record.active_hwid ? "HWID set" : "No HWID", record.active_hwid ? "beta" : "stable"),
+      createPill(`${stats.active} active keys`, stats.active ? "stable" : "maintenance"),
+    ];
+
+    const actions = [
+      createActionButton("Use In Forms", { fillUser: record.id }),
+      createActionButton("Copy ID", { copyDiscordId: record.discord_user_id || "" }),
+    ];
+
+    const card = createDataCard({
+      title: record.roblox_user || record.discord_tag || record.discord_user_id || "Unlinked user",
+      summary: createMetaText([
+        record.discord_tag || "No tag",
+        record.discord_user_id || "No Discord ID",
+      ]),
+      meta: createMetaText([
+        record.blacklist_reason || "No blacklist reason",
+        `${stats.total} total keys`,
+        `Updated ${formatTimestamp(record.updated_at)}`,
+      ]),
+      pills,
+      actions,
+    });
+
+    userList.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 30);
+  });
+}
+
+function renderAuditLogs() {
+  const visibleLogs = filteredAuditLogs();
+  auditList.innerHTML = "";
+
+  if (!visibleLogs.length) {
+    auditList.appendChild(createEmptyState("No audit events match the current search."));
+    return;
+  }
+
+  visibleLogs.forEach((record, index) => {
+    const pills = [
+      createPill(record.action || "action", toneFromStatus(record.action)),
+    ];
+
+    const card = createDataCard({
+      title: record.action || "Unknown event",
+      summary: record.details || "No extra details recorded.",
+      meta: createMetaText([
+        record.actor_tag || record.actor_id || "Unknown actor",
+        record.target ? `Target ${record.target}` : null,
+        formatTimestamp(record.created_at),
+      ]),
+      pills,
+    });
+
+    auditList.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 25);
+  });
+}
+
+function renderModeration() {
+  moderationList.innerHTML = "";
+
+  if (!state.moderationActions.length) {
+    moderationList.appendChild(createEmptyState("No moderation actions have been stored yet."));
+    return;
+  }
+
+  state.moderationActions.forEach((record, index) => {
+    const pills = [
+      createPill(record.active ? "Active" : "Closed", record.active ? "stable" : "dormant"),
+      createPill(record.action_type || "action", toneFromStatus(record.action_type)),
+    ];
+
+    const card = createDataCard({
+      title: record.discord_tag || record.discord_user_id || "Unknown user",
+      summary: record.reason || "No moderation reason stored.",
+      meta: createMetaText([
+        record.role_name || null,
+        record.duration_minutes ? `${record.duration_minutes} minutes` : null,
+        `Created ${formatTimestamp(record.created_at)}`,
+      ]),
+      pills,
+    });
+
+    moderationList.appendChild(card);
+    window.LuminiaSite?.observeReveal(card, index * 25);
+  });
+}
+
+function renderDashboard() {
+  renderMetrics();
   renderScripts();
+  renderKeys();
+  renderUsers();
+  renderAuditLogs();
+  renderModeration();
+}
+
+async function refreshHealth() {
+  try {
+    const payload = await requestJson("/api/health");
+    adminApiStatus.textContent = `Live • ${new Date(payload.time).toLocaleTimeString()}`;
+  } catch (error) {
+    adminApiStatus.textContent = "Offline";
+  }
+}
+
+async function loadDashboard() {
+  const payload = await requestJson("/api/admin/dashboard");
+  applyDashboard(payload);
+}
+
+function prefillUserForms(userId) {
+  const record = state.users.find((entry) => String(entry.id) === String(userId));
+  if (!record) {
+    return;
+  }
+
+  issueDiscordId.value = record.discord_user_id || "";
+  issueDiscordTag.value = record.discord_tag || "";
+  issueRobloxUser.value = record.roblox_user || "";
+
+  userDiscordId.value = record.discord_user_id || "";
+  userDiscordTag.value = record.discord_tag || "";
+  userRobloxUser.value = record.roblox_user || "";
+  userBlacklistReason.value = record.blacklist_reason || "";
+}
+
+async function runUserAction(action) {
+  clearFeedback(userActionFeedback);
+
+  const body = {
+    discordUserId: userDiscordId.value.trim(),
+    discordTag: userDiscordTag.value.trim(),
+    robloxUser: userRobloxUser.value.trim(),
+    reason: userBlacklistReason.value.trim(),
+  };
+
+  const endpointByAction = {
+    blacklist: "/api/admin/users/blacklist",
+    unblacklist: "/api/admin/users/unblacklist",
+    reset: "/api/admin/users/reset-hwid",
+  };
+
+  const buttonByAction = {
+    blacklist: blacklistUserButton,
+    unblacklist: unblacklistUserButton,
+    reset: resetHwidButton,
+  };
+
+  const busyLabelByAction = {
+    blacklist: "Blacklisting...",
+    unblacklist: "Restoring...",
+    reset: "Resetting...",
+  };
+
+  const successLabelByAction = {
+    blacklist: "User blacklisted successfully.",
+    unblacklist: "User removed from blacklist.",
+    reset: "HWID reset successfully.",
+  };
+
+  try {
+    setBusy(buttonByAction[action], true, busyLabelByAction[action]);
+
+    const payload = await requestJson(endpointByAction[action], {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    applyDashboard(payload.dashboard);
+    setFeedback(userActionFeedback, successLabelByAction[action], "success");
+  } catch (error) {
+    setFeedback(userActionFeedback, error.message, "error");
+  } finally {
+    setBusy(buttonByAction[action], false, buttonByAction[action].dataset.idleLabel);
+  }
 }
 
 async function bootstrap() {
@@ -388,10 +838,10 @@ async function bootstrap() {
   renderPreview();
 
   try {
-    const payload = await requestJson("/api/admin/session", { headers: {} });
+    const payload = await requestJson("/api/admin/session");
     if (payload.authenticated) {
       showDashboard(payload.username);
-      await loadScripts();
+      await loadDashboard();
       return;
     }
 
@@ -411,8 +861,7 @@ loginForm.addEventListener("submit", async (event) => {
   };
 
   try {
-    loginButton.disabled = true;
-    loginButton.textContent = "Signing in...";
+    setBusy(loginButton, true, "Signing in...");
 
     const payload = await requestJson("/api/admin/login", {
       method: "POST",
@@ -420,12 +869,11 @@ loginForm.addEventListener("submit", async (event) => {
     });
 
     showDashboard(payload.username);
-    await loadScripts();
+    await loadDashboard();
   } catch (error) {
     setFeedback(loginFeedback, error.message, "error");
   } finally {
-    loginButton.disabled = false;
-    loginButton.textContent = "Enter Dashboard";
+    setBusy(loginButton, false, loginButton.dataset.idleLabel);
   }
 });
 
@@ -434,6 +882,77 @@ logoutButton.addEventListener("click", async () => {
     method: "POST",
   }).catch(() => {});
   showLogin(true);
+});
+
+dashboardRefreshButton?.addEventListener("click", async () => {
+  try {
+    setBusy(dashboardRefreshButton, true, "Refreshing...");
+    await Promise.all([refreshHealth(), loadDashboard()]);
+  } finally {
+    setBusy(dashboardRefreshButton, false, dashboardRefreshButton.dataset.idleLabel);
+  }
+});
+
+issueKeyForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearFeedback(issueKeyFeedback);
+
+  const body = {
+    discordUserId: issueDiscordId.value.trim(),
+    discordTag: issueDiscordTag.value.trim(),
+    robloxUser: issueRobloxUser.value.trim(),
+    type: issueKeyType.value,
+  };
+
+  try {
+    setBusy(issueKeyButton, true, "Issuing...");
+
+    const payload = await requestJson("/api/admin/keys/issue", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    applyDashboard(payload.dashboard);
+    setFeedback(
+      issueKeyFeedback,
+      payload.created
+        ? `Key created for ${payload.record.roblox_user}: ${payload.record.key}`
+        : `Existing active key reused for ${payload.record.roblox_user}: ${payload.record.key}`,
+      "success",
+    );
+  } catch (error) {
+    setFeedback(issueKeyFeedback, error.message, "error");
+  } finally {
+    setBusy(issueKeyButton, false, issueKeyButton.dataset.idleLabel);
+  }
+});
+
+blacklistUserButton.addEventListener("click", () => runUserAction("blacklist"));
+unblacklistUserButton.addEventListener("click", () => runUserAction("unblacklist"));
+resetHwidButton.addEventListener("click", () => runUserAction("reset"));
+
+revokeKeyForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearFeedback(revokeKeyFeedback);
+
+  try {
+    setBusy(revokeKeyButton, true, "Revoking...");
+
+    const payload = await requestJson("/api/admin/keys/revoke", {
+      method: "POST",
+      body: JSON.stringify({
+        key: revokeKeyInput.value.trim(),
+        reason: revokeReasonInput.value.trim(),
+      }),
+    });
+
+    applyDashboard(payload.dashboard);
+    setFeedback(revokeKeyFeedback, `Key ${payload.record.key} revoked successfully.`, "success");
+  } catch (error) {
+    setFeedback(revokeKeyFeedback, error.message, "error");
+  } finally {
+    setBusy(revokeKeyButton, false, revokeKeyButton.dataset.idleLabel);
+  }
 });
 
 scriptTitle.addEventListener("input", () => {
@@ -475,6 +994,9 @@ scriptFile.addEventListener("change", async () => {
 });
 
 scriptSearch.addEventListener("input", renderScripts);
+keySearch.addEventListener("input", renderKeys);
+userSearch.addEventListener("input", renderUsers);
+auditSearch.addEventListener("input", renderAuditLogs);
 
 scriptResetButton.addEventListener("click", () => {
   resetScriptForm();
@@ -495,17 +1017,17 @@ scriptForm.addEventListener("submit", async (event) => {
     content: scriptContent.value,
   };
 
+  const wasEditing = Boolean(scriptEditId.value);
+
   try {
-    const wasEditing = Boolean(scriptEditId.value);
-    scriptSaveButton.disabled = true;
-    scriptSaveButton.textContent = scriptEditId.value ? "Updating..." : "Saving...";
+    setBusy(scriptSaveButton, true, wasEditing ? "Updating..." : "Saving...");
 
     await requestJson("/api/admin/scripts", {
       method: "POST",
       body: JSON.stringify(payload),
     });
 
-    await loadScripts();
+    await loadDashboard();
     resetScriptForm({ clearMessage: false });
     setFeedback(
       scriptFeedback,
@@ -515,15 +1037,14 @@ scriptForm.addEventListener("submit", async (event) => {
   } catch (error) {
     setFeedback(scriptFeedback, error.message, "error");
   } finally {
-    scriptSaveButton.disabled = false;
-    scriptSaveButton.textContent = scriptEditId.value ? "Update Script" : "Save Script";
+    setBusy(scriptSaveButton, false, scriptSaveButton.dataset.idleLabel);
   }
 });
 
 scriptList.addEventListener("click", async (event) => {
   const editButton = event.target.closest("[data-edit-script]");
   if (editButton) {
-    const script = scripts.find((entry) => String(entry.id) === editButton.dataset.editScript);
+    const script = state.scripts.find((entry) => String(entry.id) === editButton.dataset.editScript);
     if (script) {
       loadScriptIntoForm(script);
     }
@@ -544,7 +1065,7 @@ scriptList.addEventListener("click", async (event) => {
 
   const deleteButton = event.target.closest("[data-delete-script]");
   if (deleteButton) {
-    const script = scripts.find((entry) => String(entry.id) === deleteButton.dataset.deleteScript);
+    const script = state.scripts.find((entry) => String(entry.id) === deleteButton.dataset.deleteScript);
     if (!script) {
       return;
     }
@@ -558,7 +1079,7 @@ scriptList.addEventListener("click", async (event) => {
       await requestJson(`/api/admin/scripts/${script.id}`, {
         method: "DELETE",
       });
-      await loadScripts();
+      await loadDashboard();
       setFeedback(scriptFeedback, "Script deleted.", "success");
       if (String(scriptEditId.value) === String(script.id)) {
         resetScriptForm();
@@ -566,6 +1087,33 @@ scriptList.addEventListener("click", async (event) => {
     } catch (error) {
       setFeedback(scriptFeedback, error.message, "error");
     }
+  }
+});
+
+keyList.addEventListener("click", async (event) => {
+  const copyButton = event.target.closest("[data-copy-key]");
+  if (copyButton) {
+    await copyText(copyButton.dataset.copyKey, "Copied key", copyButton);
+    return;
+  }
+
+  const revokeButton = event.target.closest("[data-fill-revoke]");
+  if (revokeButton) {
+    revokeKeyInput.value = revokeButton.dataset.fillRevoke;
+    revokeReasonInput.focus();
+  }
+});
+
+userList.addEventListener("click", async (event) => {
+  const fillButton = event.target.closest("[data-fill-user]");
+  if (fillButton) {
+    prefillUserForms(fillButton.dataset.fillUser);
+    return;
+  }
+
+  const copyIdButton = event.target.closest("[data-copy-discord-id]");
+  if (copyIdButton && copyIdButton.dataset.copyDiscordId) {
+    await copyText(copyIdButton.dataset.copyDiscordId, "Copied ID", copyIdButton);
   }
 });
 

@@ -176,11 +176,33 @@ const statements = {
     WHERE discord_user_id = ?
     ORDER BY datetime(created_at) DESC
   `),
+  listAllKeys: db.prepare(`
+    SELECT *
+    FROM keys
+    ORDER BY datetime(created_at) DESC, id DESC
+  `),
+  listUsers: db.prepare(`
+    SELECT *
+    FROM users
+    ORDER BY datetime(updated_at) DESC, id DESC
+  `),
   listBlacklistedUsers: db.prepare(`
     SELECT *
     FROM users
     WHERE blacklisted = 1
     ORDER BY updated_at DESC
+  `),
+  listModerationActions: db.prepare(`
+    SELECT *
+    FROM moderation_actions
+    ORDER BY datetime(created_at) DESC, id DESC
+    LIMIT 80
+  `),
+  listAuditLogs: db.prepare(`
+    SELECT *
+    FROM audit_logs
+    ORDER BY datetime(created_at) DESC, id DESC
+    LIMIT 80
   `),
   listScripts: db.prepare(`
     SELECT
