@@ -60,8 +60,22 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS scripts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    content TEXT NOT NULL,
+    uploaded_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_keys_lookup
     ON keys(discord_user_id, roblox_user, type, status, expires_at);
+
+  CREATE INDEX IF NOT EXISTS idx_scripts_slug
+    ON scripts(slug);
 `);
 
 // Preserve lifetime premium keys in existing databases without rebuilding the table.
@@ -151,6 +165,35 @@ const statements = {
     FROM users
     WHERE blacklisted = 1
     ORDER BY updated_at DESC
+  `),
+  listScripts: db.prepare(`
+    SELECT id, title, slug, description, uploaded_by, created_at, updated_at
+    FROM scripts
+    ORDER BY datetime(updated_at) DESC, id DESC
+  `),
+  listScriptsWithContent: db.prepare(`
+    SELECT *
+    FROM scripts
+    ORDER BY datetime(updated_at) DESC, id DESC
+  `),
+  findScriptBySlug: db.prepare(`
+    SELECT *
+    FROM scripts
+    WHERE slug = ?
+    LIMIT 1
+  `),
+  upsertScript: db.prepare(`
+    INSERT INTO scripts (title, slug, description, content, uploaded_by, created_at, updated_at)
+    VALUES (@title, @slug, @description, @content, @uploaded_by, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(slug) DO UPDATE SET
+      title = excluded.title,
+      description = excluded.description,
+      content = excluded.content,
+      uploaded_by = excluded.uploaded_by,
+      updated_at = CURRENT_TIMESTAMP
+  `),
+  deleteScriptById: db.prepare(`
+    DELETE FROM scripts WHERE id = ?
   `),
   createModerationAction: db.prepare(`
     INSERT INTO moderation_actions (

@@ -23,9 +23,9 @@ async function loadHealth() {
       throw new Error("Health check failed");
     }
 
-    setServiceStatus("online", `Live now • ${new Date(payload.time).toLocaleTimeString()}`);
+    setServiceStatus("online", `ONLINE • ${new Date(payload.time).toLocaleTimeString()}`);
   } catch (error) {
-    setServiceStatus("offline", "Service unavailable");
+    setServiceStatus("offline", "OFFLINE");
   }
 }
 

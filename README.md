@@ -5,6 +5,8 @@ Luminia Hub is a combined website and Discord bot for issuing access keys, track
 ## What is included
 
 - Public website for generating normal user keys
+- Dark landing page with a public access portal and service status
+- Admin dashboard for script uploads and raw script links
 - SQLite database for keys, users, blacklists, and moderation history
 - Discord bot with the required `!` commands
 - 24-hour expiry for normal keys
@@ -54,6 +56,8 @@ Also included:
    - `DISCORD_CLIENT_ID`
    - `DISCORD_GUILD_ID`
    - `ADMIN_ROLE_IDS` if you want specific staff roles to control the bot
+   - `ADMIN_USERS` for dashboard logins in the format `howard:password,xuno:password`
+   - `ADMIN_SESSION_SECRET` as a long random secret for signing the admin cookie
 
 4. Start the app:
 
@@ -62,6 +66,7 @@ Also included:
    ```
 
 5. Open the site at `http://localhost:3000`
+6. Open the admin panel at `http://localhost:3000/admin`
 
 ## Discord bot notes
 
@@ -79,6 +84,13 @@ Also included:
 - The versioned Roblox key GUI script lives at `integrations/roblox/luminia.lua`.
 - It currently points to the live Railway deployment at `https://luminia-hub-production.up.railway.app`.
 - If your production domain changes later, update `SITE_URL` near the bottom of that Lua file.
+
+## Admin dashboard
+
+- Visit `/admin` to sign in and manage uploadable scripts.
+- Admin accounts come from `ADMIN_USERS`, which is a comma-separated list of `username:password` pairs.
+- Saved scripts are exposed as raw URLs at `/api/scripts/{slug}/raw`.
+- Script uploads are stored in the same SQLite database as the rest of the platform, so use persistent storage in production.
 
 ## API
 
@@ -99,6 +111,22 @@ Request body:
 ### `GET /api/keys/status?discordUserId=123456789012345678`
 
 Returns all keys stored for that Discord user.
+
+### `POST /api/admin/login`
+
+Signs an admin in and sets the dashboard session cookie.
+
+### `GET /api/admin/scripts`
+
+Returns every uploaded script for an authenticated admin session.
+
+### `POST /api/admin/scripts`
+
+Creates or updates a script by slug for an authenticated admin session.
+
+### `GET /api/scripts/{slug}/raw`
+
+Returns the raw script content as plain text.
 
 ## Free hosting options
 

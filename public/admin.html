@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luminia Hub Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <header class="admin-header">
+        <a class="admin-brand" href="/">
+          <span class="admin-brand-mark">L</span>
+          <span>
+            <strong>Luminia Hub</strong>
+            <small>Script control panel</small>
+          </span>
+        </a>
+
+        <div class="admin-header-actions">
+          <a class="ghost-button" href="/">Back to Site</a>
+          <button id="logout-button" class="ghost-button hidden" type="button">Log Out</button>
+        </div>
+      </header>
+
+      <main class="admin-main">
+        <section id="admin-login-view" class="admin-card admin-login">
+          <p class="eyebrow">Restricted access</p>
+          <h1>Sign in to the Luminia script dashboard.</h1>
+          <p class="subcopy">
+            Use one of the configured admin accounts to upload, edit, and manage scripts served by the live API.
+          </p>
+
+          <div id="admin-config-warning" class="admin-warning hidden"></div>
+
+          <form id="admin-login-form" class="admin-form">
+            <label>
+              <span>Username</span>
+              <input id="login-username" name="username" autocomplete="username" required />
+            </label>
+            <label>
+              <span>Password</span>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <button id="login-button" type="submit">Enter Dashboard</button>
+          </form>
+
+          <div id="login-feedback" class="admin-feedback hidden"></div>
+        </section>
+
+        <section id="admin-dashboard-view" class="hidden">
+          <section class="admin-hero">
+            <div class="admin-card">
+              <p class="eyebrow">Live dashboard</p>
+              <h1>Upload scripts, publish raw endpoints, and keep your Roblox integration synced.</h1>
+              <p class="subcopy">
+                Every saved script is stored in SQLite and exposed as a raw endpoint you can copy into loaders,
+                executors, or internal tooling.
+              </p>
+            </div>
+
+            <div class="metric-grid">
+              <article class="metric-card">
+                <span class="metric-label">Signed in</span>
+                <strong id="admin-user-label">-</strong>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Scripts</span>
+                <strong id="script-count-label">0</strong>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">API status</span>
+                <strong id="admin-api-status">Checking</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="dashboard-grid">
+            <section class="admin-card">
+              <div class="panel-heading">
+                <p class="eyebrow">Upload panel</p>
+                <h2>Create or update a script</h2>
+                <p class="panel-copy">
+                  Save by slug. If the slug already exists, this will overwrite that script with the new contents.
+                </p>
+              </div>
+
+              <form id="script-form" class="admin-form">
+                <input id="script-edit-id" type="hidden" />
+                <label>
+                  <span>Script Title</span>
+                  <input id="script-title" name="title" placeholder="Luminia Main Loader" required />
+                </label>
+                <label>
+                  <span>Script Slug</span>
+                  <input id="script-slug" name="slug" placeholder="luminia-main-loader" required />
+                </label>
+                <label>
+                  <span>Description</span>
+                  <input id="script-description" name="description" placeholder="Optional summary for your team" />
+                </label>
+                <label>
+                  <span>Load From File</span>
+                  <input id="script-file" type="file" accept=".lua,.txt,.luau,.json,.js,.ts,.md" />
+                </label>
+                <label>
+                  <span>Script Content</span>
+                  <textarea
+                    id="script-content"
+                    name="content"
+                    rows="16"
+                    placeholder="Paste your Lua or loader script here..."
+                    required
+                  ></textarea>
+                </label>
+
+                <div class="admin-form-actions">
+                  <button id="script-save-button" type="submit">Save Script</button>
+                  <button id="script-reset-button" class="ghost-button" type="button">Reset Form</button>
+                </div>
+              </form>
+
+              <div id="script-feedback" class="admin-feedback hidden"></div>
+            </section>
+
+            <section class="admin-card">
+              <div class="panel-heading">
+                <p class="eyebrow">Published scripts</p>
+                <h2>Versioned raw links</h2>
+                <p class="panel-copy">
+                  Copy the raw URL or load a saved script back into the editor when you need to revise it.
+                </p>
+              </div>
+
+              <div id="script-empty-state" class="empty-state hidden">
+                No scripts uploaded yet. Save your first script to create a raw endpoint.
+              </div>
+
+              <div id="script-list" class="script-list"></div>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin.js"></script>
+  </body>
+  </html>

@@ -3,11 +3,54 @@ const path = require("path");
 const config = require("./config");
 const { statements, runMaintenance } = require("./db");
 const { createOrReuseKey, validateKey } = require("./key-service");
+const {
+  authenticateAdmin,
+  clearAdminCookie,
+  createSession,
+  getAdminUser,
+  requireAdminApi,
+  setAdminCookie,
+} = require("./admin-auth");
 
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(config.rootDir, "public")));
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function sanitizeScriptInput(payload) {
+  const title = String(payload.title || "").trim();
+  const slug = slugify(payload.slug || payload.title);
+  const description = String(payload.description || "").trim();
+  const content = String(payload.content || "");
+
+  if (!title) {
+    throw new Error("Script title is required.");
+  }
+
+  if (!slug) {
+    throw new Error("Script slug is required.");
+  }
+
+  if (!content.trim()) {
+    throw new Error("Script content is required.");
+  }
+
+  return {
+    title,
+    slug,
+    description,
+    content,
+  };
+}
 
 app.get("/api/health", (req, res) => {
   runMaintenance();
@@ -87,6 +130,87 @@ app.post("/api/keys/validate", (req, res) => {
   }
 });
 
+app.get("/api/admin/session", (req, res) => {
+  const adminUser = getAdminUser(req);
+  return res.json({
+    ok: true,
+    authenticated: Boolean(adminUser),
+    username: adminUser,
+    configured: config.adminUsers.length > 0,
+  });
+});
+
+app.post("/api/admin/login", (req, res) => {
+  if (!config.adminUsers.length) {
+    return res.status(503).json({
+      ok: false,
+      error: "Admin panel is not configured yet. Add ADMIN_USERS in the environment.",
+    });
+  }
+
+  const account = authenticateAdmin(req.body?.username, req.body?.password);
+  if (!account) {
+    return res.status(401).json({
+      ok: false,
+      error: "Invalid username or password.",
+    });
+  }
+
+  const session = createSession(account.username);
+  setAdminCookie(res, req, session);
+
+  return res.json({
+    ok: true,
+    username: account.username,
+  });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  clearAdminCookie(res, req);
+  return res.json({ ok: true });
+});
+
+app.get("/api/admin/scripts", requireAdminApi, (req, res) => {
+  return res.json({
+    ok: true,
+    scripts: statements.listScriptsWithContent.all(),
+  });
+});
+
+app.post("/api/admin/scripts", requireAdminApi, (req, res) => {
+  try {
+    const script = sanitizeScriptInput(req.body || {});
+    statements.upsertScript.run({
+      ...script,
+      uploaded_by: req.adminUser,
+    });
+
+    return res.json({
+      ok: true,
+      script: statements.findScriptBySlug.get(script.slug),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/admin/scripts/:id", requireAdminApi, (req, res) => {
+  statements.deleteScriptById.run(req.params.id);
+  return res.json({ ok: true });
+});
+
+app.get("/api/scripts/:slug/raw", (req, res) => {
+  const script = statements.findScriptBySlug.get(req.params.slug);
+  if (!script) {
+    return res.status(404).type("text/plain").send("Script not found.");
+  }
+
+  return res.type("text/plain; charset=utf-8").send(script.content);
+});
+
 app.get("/api/keys/status", (req, res) => {
   runMaintenance();
   const discordUserId = String(req.query.discordUserId || "").trim();
@@ -102,6 +226,10 @@ app.get("/api/keys/status", (req, res) => {
     ok: true,
     keys,
   });
+});
+
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(config.rootDir, "public", "admin.html"));
 });
 
 app.use((req, res) => {
