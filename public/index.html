@@ -59,17 +59,17 @@
               </div>
             </div>
             <p class="eyebrow">001_LUMINIA_ACCESS_CORE</p>
-            <h1>Keys, scripts, and Discord control.</h1>
+            <h1>Access and delivery for Luminia Hub.</h1>
 
             <div class="hero-meta">
               <span class="meta-live">LIVE</span>
               <span>24H KEYS</span>
-              <span>TIMED PREMIUM</span>
               <span>ROBLOX SYNC</span>
+              <span>DISCORD STAFF TOOLS</span>
             </div>
 
             <p class="hero-paragraph">
-              One place for user access, script delivery, and staff control.
+              Clean user access on the web, paid script delivery through Discord, and one control layer for staff.
             </p>
 
             <div class="hero-actions">
@@ -125,18 +125,18 @@
         <section class="feature-strip">
           <article class="feature-card" data-reveal>
             <span>01</span>
-            <h2>24-hour keys</h2>
-            <p>Users generate and renew normal access directly from the site.</p>
+            <h2>Normal access</h2>
+            <p>Self-serve 24-hour keys from the public portal.</p>
           </article>
           <article class="feature-card" data-reveal>
             <span>02</span>
-            <h2>Premium</h2>
-            <p>Staff issue timed premium keys and script-locked paid access in Discord.</p>
+            <h2>Paid scripts</h2>
+            <p>Blade Ball, Steal A Brainrot, and Arsenal stay script-locked.</p>
           </article>
           <article class="feature-card" data-reveal>
             <span>03</span>
-            <h2>Script library</h2>
-            <p>Upload releases once and ship raw links or loaders from the dashboard.</p>
+            <h2>Staff control</h2>
+            <p>Discord bot tools and the admin dashboard stay in sync.</p>
           </article>
         </section>
 
@@ -210,33 +210,33 @@
           <div class="stacked-panels">
             <section id="distribution" class="panel" data-reveal>
               <div class="panel-head">
-                <p class="eyebrow">SCRIPT_DISTRIBUTION</p>
-                <h2>Script delivery</h2>
+                <p class="eyebrow">SYSTEM_FLOW</p>
+                <h2>How access moves</h2>
               </div>
 
               <div class="distribution-list">
                 <article>
-                  <span class="distribution-tag">DASHBOARD</span>
-                  <h3>Admin dashboard</h3>
-                <p>Manage uploads, users, keys, and live actions in one place.</p>
-              </article>
-              <article>
-                <span class="distribution-tag">RAW_URLS</span>
-                <h3>Loader-ready output</h3>
-                  <p>Every script gets a raw route for loaders, tools, and private delivery.</p>
+                  <span class="distribution-tag">WEB</span>
+                  <h3>Normal users</h3>
+                  <p>Generate a 24-hour key and renew when it expires.</p>
                 </article>
                 <article>
-                  <span class="distribution-tag">VALIDATION</span>
-                  <h3>Username match</h3>
-                  <p>Verification only succeeds when the key belongs to that Roblox username.</p>
+                  <span class="distribution-tag">DISCORD</span>
+                  <h3>Paid access</h3>
+                  <p>Staff issue premium or script-specific keys privately by DM.</p>
+                </article>
+                <article>
+                  <span class="distribution-tag">VERIFY</span>
+                  <h3>Roblox check</h3>
+                  <p>Validation only passes on the right username and matching script scope.</p>
                 </article>
               </div>
             </section>
 
             <section class="panel" data-reveal>
               <div class="panel-head">
-                <p class="eyebrow">ACCESS_RULES</p>
-                <h2>Access rules</h2>
+                <p class="eyebrow">KEY_LANES</p>
+                <h2>Access lanes</h2>
               </div>
 
               <div class="rule-grid">
@@ -253,17 +253,13 @@
                   <p>Blade Ball, Steal A Brainrot, and Arsenal use script-locked keys.</p>
                 </article>
                 <article>
-                  <strong>DM Delivery</strong>
-                  <p>Keys are delivered privately when possible.</p>
-                </article>
-                <article>
-                  <strong>Username Match</strong>
-                  <p>Verification is tied to the recorded Roblox user and expected script.</p>
+                  <strong>Verification</strong>
+                  <p>Keys are tied to the recorded Roblox user and expected script.</p>
                 </article>
               </div>
 
               <div class="form-actions">
-                <a class="secondary-button" href="/admin">Open Admin</a>
+                <a class="secondary-button" href="/scripts">Open Library</a>
               </div>
             </section>
           </div>
@@ -287,47 +283,56 @@
         <section id="commands" class="panel command-panel" data-reveal>
           <div class="panel-head">
             <p class="eyebrow">DISCORD_OPERATIONS</p>
-            <h2>Discord commands</h2>
-            <p>Access, moderation, blacklist control, and diagnostics live in Discord.</p>
+            <h2>Discord side</h2>
+            <p>Commands stay in Discord. The site handles access, while staff tools stay private.</p>
           </div>
 
           <div class="command-grid">
             <article class="command-block" data-reveal>
-              <h3>Access</h3>
-              <code>!gen-key {user} {robloxuser}</code>
-              <code>!prem-gen {user} {robloxuser} {duration}</code>
-              <code>!bb {user} {robloxuser}</code>
-              <code>!sab {user} {robloxuser}</code>
-              <code>!arsenal {user} {robloxuser}</code>
-              <code>!revoke_key {user} {key}</code>
-              <code>!revoke_prem {user} {key}</code>
-              <code>!reset_hwid</code>
+              <h3>Issuance</h3>
+              <p>Normal keys, timed premium access, and paid-script keys are all issued here.</p>
+              <div class="command-pill-row">
+                <code>!gen-key</code>
+                <code>!prem-gen</code>
+                <code>!bb</code>
+                <code>!sab</code>
+                <code>!arsenal</code>
+              </div>
             </article>
 
             <article class="command-block" data-reveal>
               <h3>Control</h3>
-              <code>!blacklist {user} {reason}</code>
-              <code>!blacklists</code>
-              <code>!unblacklist {user}</code>
-              <code>!commands</code>
-              <code>!check-perms</code>
+              <p>Blacklist, reset, revoke, and diagnostics stay with staff in Discord.</p>
+              <div class="command-pill-row">
+                <code>!revoke_key</code>
+                <code>!revoke_prem</code>
+                <code>!blacklist</code>
+                <code>!reset_hwid</code>
+                <code>!check-perms</code>
+              </div>
             </article>
 
             <article class="command-block" data-reveal>
               <h3>Moderation</h3>
-              <code>!ban {user} {reason}</code>
-              <code>!kick {user} {reason}</code>
-              <code>!mute {user} {duration} {reason}</code>
-              <code>!unban {user}</code>
-              <code>!unmute {user}</code>
-              <code>!role {user} {role}</code>
+              <p>Ban, kick, mute, roles, and the admin dashboard all use the same live bot.</p>
+              <div class="command-pill-row">
+                <code>!ban</code>
+                <code>!kick</code>
+                <code>!mute</code>
+                <code>!unban</code>
+                <code>!unmute</code>
+                <code>!role</code>
+              </div>
             </article>
 
             <article class="command-block" data-reveal>
               <h3>Auto-Mod</h3>
-              <code>Invite links: filtered</code>
-              <code>Mass mentions: filtered</code>
-              <code>Repeat spam: filtered</code>
+              <p>A first-pass filter is live for external invites, mass mentions, and repeat spam.</p>
+              <div class="command-pill-row">
+                <code>Invite links</code>
+                <code>Mass mentions</code>
+                <code>Repeat spam</code>
+              </div>
             </article>
           </div>
         </section>
