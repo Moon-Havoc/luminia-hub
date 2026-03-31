@@ -342,10 +342,10 @@ button {
 }
 
 .hero-copy h1 {
-  max-width: 12ch;
+  max-width: 10ch;
   margin-top: 0.8rem;
-  font-size: clamp(2.6rem, 5.6vw, 4.35rem);
-  line-height: 0.94;
+  font-size: clamp(2.35rem, 4.85vw, 3.75rem);
+  line-height: 0.98;
   letter-spacing: -0.03em;
 }
 
@@ -1105,7 +1105,7 @@ button:hover {
 
 @media (max-width: 560px) {
   .hero-copy h1 {
-    font-size: clamp(2.3rem, 12vw, 3.4rem);
+    font-size: clamp(2.05rem, 10.6vw, 3rem);
   }
 
   .result-header,
