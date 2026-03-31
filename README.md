@@ -11,22 +11,30 @@ Amethyst Hub is a combined website and Discord bot for issuing access keys, trac
 - SQLite database for keys, users, blacklists, and moderation history
 - Discord bot with the required `~` commands
 - 24-hour expiry for normal keys
-- Premium keys that never expire
+- Timed premium keys issued by staff
 - Key format of `AME_` followed by 15 characters
 
 ## Commands
 
-- `~prem-gen {user} {robloxuser}`
+- `~prem-gen {user} {robloxuser} {duration}`
 - `~gen-key {user} {robloxuser}`
+- `~bloxfruits {user} {robloxuser}`
 - `~reset_hwid`
 - `~revoke_key {user} {key}`
 - `~revoke_prem {user} {key}`
-- `~blacklists {user}`
+- `~blacklists`
 - `~unblacklist {user}`
 - `~ban {user} {reason}`
 - `~kick {user} {reason}`
 - `~mute {user} {duration} {reason}`
 - `~role {user} {role}`
+- `~purge {count}`
+- `~verify {user}`
+- `~unverify {user}`
+- `~setup status`
+- `~setup verify-role|unverified-role|autorole|welcome-channel {value|off}`
+- `~setup welcome-message {text|off}`
+- `~setup welcome-test [user]`
 - `~unban {user}`
 - `~unmute {user}`
 - `~commands`
@@ -78,6 +86,9 @@ Also included:
 - For moderation actions, the bot still needs the matching Discord permissions and a role high enough in the server hierarchy.
 - Required Discord permissions for full functionality are `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Kick Members`, `Ban Members`, `Moderate Members`, and `Manage Roles`.
 - `~mute` accepts values like `30m`, `12h`, or `7d`.
+- `~prem-gen` accepts durations like `30m`, `12h`, or `7d`.
+- `~bloxfruits` issues a Blox Fruits-only paid key that will not validate on other routes.
+- `~verify`, `~unverify`, and the `~setup` commands handle verification, autorole, and welcome configuration directly from Discord.
 - `~unban` works best with a user ID.
 - Use `~commands` to show the current command list in Discord.
 - Use `~check-perms` to confirm the bot's server permissions and get a role hierarchy reminder.
@@ -88,6 +99,7 @@ Also included:
 - They currently point to the live Railway deployment at `https://luminia-hub-production.up.railway.app`.
 - If your production domain changes later, update `SITE_URL` near the bottom of the Lua file you are using.
 - The shared unscoped loader is now `integrations/roblox/amethyst.lua`.
+- The scoped Blox Fruits loader is `integrations/roblox/bloxfruits.lua`.
 
 ## Remaining external rename steps
 

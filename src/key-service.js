@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { statements, logAction, runMaintenance } = require("./db");
-const { isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
+const { isRecognizedScope, isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
 
 const LIFETIME_EXPIRY = "never";
 
@@ -165,6 +165,10 @@ function validateKey({ key, robloxUser, scope }) {
 
   const cleanKey = normalizeName(key);
   const cleanRobloxUser = normalizeName(robloxUser);
+  const rawRequestedScope = normalizeName(scope).toLowerCase();
+  if (rawRequestedScope && !isRecognizedScope(rawRequestedScope)) {
+    return invalid("That script route is no longer supported.", "unsupported_scope");
+  }
   const requestedScope = normalizeName(scope)
     ? normalizeAccessScope(scope, "normal")
     : null;

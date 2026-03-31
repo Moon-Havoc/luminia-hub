@@ -24,23 +24,11 @@ const ACCESS_SCOPES = {
     title: "Premium key required",
     description: "This access lane uses a staff-issued premium key with a set duration.",
   },
-  bb: {
-    label: "Blade Ball",
-    command: "~bb {user} {robloxuser}",
-    title: "Blade Ball key required",
-    description: "This script is locked to Blade Ball paid keys. Normal website keys will not unlock it.",
-  },
-  sab: {
-    label: "Steal A Brainrot",
-    command: "~sab {user} {robloxuser}",
-    title: "Steal A Brainrot key required",
-    description: "This script is locked to Steal A Brainrot paid keys. Normal website keys will not unlock it.",
-  },
-  arsenal: {
-    label: "Arsenal",
-    command: "~arsenal {user} {robloxuser}",
-    title: "Arsenal key required",
-    description: "This script is locked to Arsenal paid keys. Normal website keys will not unlock it.",
+  bloxfruits: {
+    label: "Blox Fruits",
+    command: "~bloxfruits {user} {robloxuser}",
+    title: "Blox Fruits key required",
+    description: "This script is locked to Blox Fruits paid keys. Normal website keys will not unlock it.",
   },
 };
 

@@ -146,12 +146,8 @@ function accessLabel(scope) {
   switch (String(scope || "").toLowerCase()) {
     case "premium":
       return "Premium";
-    case "bb":
-      return "Blade Ball";
-    case "sab":
-      return "Steal A Brainrot";
-    case "arsenal":
-      return "Arsenal";
+    case "bloxfruits":
+      return "Blox Fruits";
     default:
       return "Normal";
   }
@@ -910,7 +906,7 @@ function renderKeys() {
     const pills = [
       createPill(
         accessLabel(record.scope),
-        ["bb", "sab", "arsenal"].includes(record.scope)
+        ["bloxfruits"].includes(record.scope)
           ? "maintenance"
           : record.type === "premium"
             ? "beta"

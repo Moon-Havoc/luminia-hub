@@ -6,7 +6,7 @@ const {
   PermissionFlagsBits,
 } = require("discord.js");
 const config = require("./config");
-const { statements } = require("./db");
+const { statements, logAction } = require("./db");
 const { setBotClient } = require("./discord-admin");
 const { isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
 const {
@@ -18,6 +18,7 @@ const {
   updateAutoModList,
   updateAutoModValue,
 } = require("./automod");
+const { getGuildFeatures, renderWelcomeMessage, saveGuildFeatures } = require("./guild-features");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist } = require("./key-service");
 const { isBotAdmin } = require("./permissions");
 
@@ -50,9 +51,7 @@ const BOT_PREFIX = config.commandPrefix;
 const COMMAND_DESCRIPTIONS = [
   `\`${BOT_PREFIX}gen-key {user} {robloxuser}\` - create a 24-hour key and DM it to the user`,
   `\`${BOT_PREFIX}prem-gen {user} {robloxuser} {duration}\` - create a timed premium key and DM it to the user`,
-  `\`${BOT_PREFIX}bb {user} {robloxuser}\` - create a Blade Ball paid key locked to Blade Ball`,
-  `\`${BOT_PREFIX}sab {user} {robloxuser}\` - create a Steal A Brainrot paid key locked to that script`,
-  `\`${BOT_PREFIX}arsenal {user} {robloxuser}\` - create an Arsenal paid key locked to Arsenal`,
+  `\`${BOT_PREFIX}bloxfruits {user} {robloxuser}\` - create a Blox Fruits paid key locked to Blox Fruits`,
   `\`${BOT_PREFIX}revoke_key {user} {key}\` - revoke a normal key and DM the notice`,
   `\`${BOT_PREFIX}revoke_prem {user} {key}\` - revoke a premium key and DM the notice`,
   `\`${BOT_PREFIX}reset_hwid [user]\` - reset your HWID, or another user's if you are staff`,
@@ -64,9 +63,16 @@ const COMMAND_DESCRIPTIONS = [
   `\`${BOT_PREFIX}mute {user} {duration} {reason}\` - timeout a user`,
   `\`${BOT_PREFIX}unmute {user}\` - remove a timeout`,
   `\`${BOT_PREFIX}role {user} {role}\` - add a role to a user`,
+  `\`${BOT_PREFIX}purge {count}\` - remove recent messages from the current channel`,
+  `\`${BOT_PREFIX}verify {user}\` - apply the configured verification role`,
+  `\`${BOT_PREFIX}unverify {user}\` - remove the configured verification role`,
   `\`${BOT_PREFIX}unban {userId}\` - unban a user by ID`,
   `\`${BOT_PREFIX}commands\` - show this list`,
   `\`${BOT_PREFIX}check-perms\` - check the bot's Discord permissions in this server`,
+  `\`${BOT_PREFIX}setup status\` - show current welcome, autorole, and verification config`,
+  `\`${BOT_PREFIX}setup verify-role|unverified-role|autorole|welcome-channel {value|off}\` - configure onboarding roles and channels`,
+  `\`${BOT_PREFIX}setup welcome-message {text|off}\` - set the welcome text. Tokens: {user}, {server}, {membercount}`,
+  `\`${BOT_PREFIX}setup welcome-test [user]\` - preview the current welcome message`,
   `\`${BOT_PREFIX}automod status\` - show current automod state, actions, and live rules`,
   `\`${BOT_PREFIX}automod toggle {setting} {on|off}\` - enable or disable a rule or action`,
   `\`${BOT_PREFIX}automod set {setting} {value}\` - change thresholds, timeout, or log channel`,
@@ -93,6 +99,8 @@ function commandNameForScope(scope) {
       return "gen-key";
     case "premium":
       return "prem-gen";
+    case "bloxfruits":
+      return "bloxfruits";
     default:
       return cleanScope;
   }
@@ -276,6 +284,11 @@ function resolveChannelId(guild, raw) {
   return channel?.id || null;
 }
 
+function resolveRole(guild, raw) {
+  const roleId = resolveRoleId(guild, raw);
+  return roleId ? guild.roles.cache.get(roleId) || null : null;
+}
+
 async function resolveUserId(message, raw) {
   const directId = parseUserIdLike(raw);
   if (directId) {
@@ -288,6 +301,22 @@ async function resolveUserId(message, raw) {
 
 async function getBotMember(message) {
   return message.guild.members.me || message.guild.members.fetchMe();
+}
+
+async function getGuildBotMember(guild) {
+  return guild.members.me || guild.members.fetchMe();
+}
+
+function roleMentionOrText(roleId) {
+  return roleId ? `<@&${roleId}>` : "Not set";
+}
+
+function channelMentionOrText(channelId) {
+  return channelId ? `<#${channelId}>` : "Not set";
+}
+
+function isClearValue(value) {
+  return ["off", "clear", "none", "disable", "disabled"].includes(String(value || "").trim().toLowerCase());
 }
 
 function replyError(message, error) {
@@ -422,6 +451,18 @@ function replyUsage(message, usage) {
   });
 }
 
+async function sendTemporaryChannelEmbed(channel, payload, timeoutMs = 4000) {
+  const notice = await channel.send({
+    embeds: [createEmbed(payload)],
+  });
+
+  setTimeout(() => {
+    notice.delete().catch(() => {});
+  }, timeoutMs);
+
+  return notice;
+}
+
 function permissionName(permission) {
   return PERMISSION_LABELS[permission.toString()] || String(permission);
 }
@@ -488,6 +529,461 @@ async function ensureActionableTarget(message, member, actionLabel) {
   });
 
   return { ok: false, botMember };
+}
+
+async function ensureGuildRoleAssignable(guild, role, label = "that role") {
+  const botMember = await getGuildBotMember(guild);
+  if (!role) {
+    throw new Error(`I couldn't find ${label}.`);
+  }
+
+  if (role.comparePositionTo(botMember.roles.highest) >= 0) {
+    throw new Error(`The bot's highest role must stay above ${label}.`);
+  }
+
+  return role;
+}
+
+async function sendSetupStatus(message, title = "Guild Setup Status") {
+  const features = getGuildFeatures(message.guild.id);
+
+  await replyEmbed(message, {
+    color: "info",
+    title,
+    description: "Welcome, verification, and autorole settings for this server.",
+    fields: [
+      {
+        name: "Verification Role",
+        value: roleMentionOrText(features.verifyRoleId),
+        inline: true,
+      },
+      {
+        name: "Unverified Role",
+        value: roleMentionOrText(features.unverifiedRoleId),
+        inline: true,
+      },
+      {
+        name: "Auto Role",
+        value: roleMentionOrText(features.autoRoleId),
+        inline: true,
+      },
+      {
+        name: "Welcome Channel",
+        value: channelMentionOrText(features.welcomeChannelId),
+        inline: true,
+      },
+      {
+        name: "Welcome Message",
+        value: features.welcomeMessage || "Not set",
+        inline: false,
+      },
+      {
+        name: "Tokens",
+        value: "`{user}` `{username}` `{tag}` `{server}` `{membercount}`",
+        inline: false,
+      },
+    ],
+  });
+}
+
+async function handleSetup(message, args) {
+  if (!(await ensureAdmin(message))) {
+    return;
+  }
+
+  const subcommand = String(args.shift() || "status").trim().toLowerCase();
+  const features = getGuildFeatures(message.guild.id);
+
+  if (["status", "show"].includes(subcommand)) {
+    await sendSetupStatus(message);
+    return;
+  }
+
+  if (["help", "?"].includes(subcommand)) {
+    await replyEmbed(message, {
+      color: "info",
+      title: "Setup Command Guide",
+      description: [
+        `\`${config.commandPrefix}setup status\``,
+        `\`${config.commandPrefix}setup verify-role @role\``,
+        `\`${config.commandPrefix}setup unverified-role @role\``,
+        `\`${config.commandPrefix}setup autorole @role\``,
+        `\`${config.commandPrefix}setup welcome-channel #channel\``,
+        `\`${config.commandPrefix}setup welcome-message Welcome to {server}, {user}!\``,
+        `\`${config.commandPrefix}setup welcome-test [user]\``,
+      ].join("\n"),
+    });
+    return;
+  }
+
+  if (subcommand === "welcome-test") {
+    const targetRaw = args.join(" ").trim();
+    const member = targetRaw ? await resolveMember(message, targetRaw) : message.member;
+    if (!member) {
+      await replyEmbed(message, {
+        color: "error",
+        title: "User Not Found",
+        description: "I couldn't find that user in this server.",
+      });
+      return;
+    }
+
+    await replyEmbed(message, {
+      color: "success",
+      title: `Welcome, ${member.displayName || member.user.username}`,
+      description: renderWelcomeMessage(features.welcomeMessage, member),
+      fields: [
+        {
+          name: "Previewing For",
+          value: member.user.tag,
+          inline: true,
+        },
+        {
+          name: "Member Count",
+          value: String(member.guild.memberCount || member.guild.members.cache.size || 0),
+          inline: true,
+        },
+      ],
+    });
+    return;
+  }
+
+  const rawValue = args.join(" ").trim();
+  if (!rawValue) {
+    await replyUsage(message, `${config.commandPrefix}setup {status|verify-role|unverified-role|autorole|welcome-channel|welcome-message|welcome-test}`);
+    return;
+  }
+
+  if (["verify-role", "unverified-role", "autorole"].includes(subcommand)) {
+    const fieldMap = {
+      "verify-role": "verifyRoleId",
+      "unverified-role": "unverifiedRoleId",
+      autorole: "autoRoleId",
+    };
+    const labelMap = {
+      "verify-role": "Verification Role",
+      "unverified-role": "Unverified Role",
+      autorole: "Auto Role",
+    };
+
+    if (isClearValue(rawValue)) {
+      saveGuildFeatures(message.guild.id, {
+        [fieldMap[subcommand]]: "",
+      }, {
+        actorId: message.author.id,
+        actorTag: message.author.tag,
+      });
+
+      await replyEmbed(message, {
+        color: "success",
+        title: "Setup Updated",
+        description: `${labelMap[subcommand]} cleared.`,
+      });
+      return;
+    }
+
+    const role = resolveRole(message.guild, rawValue);
+    await ensureGuildRoleAssignable(message.guild, role, labelMap[subcommand].toLowerCase());
+
+    saveGuildFeatures(message.guild.id, {
+      [fieldMap[subcommand]]: role.id,
+    }, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Setup Updated",
+      description: `${labelMap[subcommand]} set to ${roleMentionOrText(role.id)}.`,
+    });
+    return;
+  }
+
+  if (subcommand === "welcome-channel") {
+    if (isClearValue(rawValue)) {
+      saveGuildFeatures(message.guild.id, {
+        welcomeChannelId: "",
+      }, {
+        actorId: message.author.id,
+        actorTag: message.author.tag,
+      });
+
+      await replyEmbed(message, {
+        color: "success",
+        title: "Setup Updated",
+        description: "Welcome channel cleared.",
+      });
+      return;
+    }
+
+    const channelId = resolveChannelId(message.guild, rawValue);
+    const channel = channelId ? message.guild.channels.cache.get(channelId) : null;
+    if (!channelId || !channel?.isTextBased()) {
+      await replyEmbed(message, {
+        color: "error",
+        title: "Channel Not Found",
+        description: "Use a text channel mention, ID, or exact channel name.",
+      });
+      return;
+    }
+
+    saveGuildFeatures(message.guild.id, {
+      welcomeChannelId: channelId,
+    }, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Setup Updated",
+      description: `Welcome channel set to ${channelMentionOrText(channelId)}.`,
+    });
+    return;
+  }
+
+  if (subcommand === "welcome-message") {
+    const value = isClearValue(rawValue)
+      ? "Welcome to {server}, {user}! You are member #{membercount}."
+      : rawValue;
+
+    saveGuildFeatures(message.guild.id, {
+      welcomeMessage: value,
+    }, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Setup Updated",
+      description: "Welcome message saved.",
+      fields: [
+        {
+          name: "Current Message",
+          value,
+          inline: false,
+        },
+      ],
+    });
+    return;
+  }
+
+  await replyUsage(message, `${config.commandPrefix}setup {status|verify-role|unverified-role|autorole|welcome-channel|welcome-message|welcome-test}`);
+}
+
+async function handleVerify(message, args, mode = "verify") {
+  if (!(await ensureAdmin(message))) {
+    return;
+  }
+
+  const permissionCheck = await ensureBotPermissions(
+    message,
+    [PermissionFlagsBits.ManageRoles],
+    `\`${mode}\``,
+  );
+  if (!permissionCheck.ok) {
+    return;
+  }
+
+  const targetRaw = args.join(" ").trim();
+  if (!targetRaw) {
+    await replyUsage(message, `${config.commandPrefix}${mode} {user}`);
+    return;
+  }
+
+  const features = getGuildFeatures(message.guild.id);
+  const verifyRole = features.verifyRoleId ? message.guild.roles.cache.get(features.verifyRoleId) || null : null;
+  const unverifiedRole = features.unverifiedRoleId
+    ? message.guild.roles.cache.get(features.unverifiedRoleId) || null
+    : null;
+
+  if (!verifyRole) {
+    await replyEmbed(message, {
+      color: "warning",
+      title: "Verification Role Not Set",
+      description: `Set one first with \`${config.commandPrefix}setup verify-role @role\`.`,
+    });
+    return;
+  }
+
+  await ensureGuildRoleAssignable(message.guild, verifyRole, "the verification role");
+  if (unverifiedRole) {
+    await ensureGuildRoleAssignable(message.guild, unverifiedRole, "the unverified role");
+  }
+
+  const member = await resolveMember(message, targetRaw);
+  if (!member) {
+    await replyEmbed(message, {
+      color: "error",
+      title: "User Not Found",
+      description: "I couldn't find that user in this server.",
+    });
+    return;
+  }
+
+  const botMember = await getBotMember(message);
+  if (!member.manageable || member.roles.highest.comparePositionTo(botMember.roles.highest) >= 0) {
+    await replyEmbed(message, {
+      color: "error",
+      title: "Role Hierarchy Issue",
+      description: `The bot cannot update verification roles for **${member.user.tag}**.`,
+    });
+    return;
+  }
+
+  if (mode === "verify") {
+    if (!member.roles.cache.has(verifyRole.id)) {
+      await member.roles.add(verifyRole);
+    }
+    if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
+      await member.roles.remove(unverifiedRole).catch(() => {});
+    }
+
+    statements.createModerationAction.run({
+      action_type: "verify",
+      discord_user_id: member.id,
+      discord_tag: member.user.tag,
+      reason: `Verified by ${message.author.tag}`,
+      duration_minutes: null,
+      role_id: verifyRole.id,
+      role_name: verifyRole.name,
+      active: 0,
+      expires_at: null,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "User Verified",
+      description: `Applied ${roleMentionOrText(verifyRole.id)} to **${member.user.tag}**.`,
+    });
+    return;
+  }
+
+  if (member.roles.cache.has(verifyRole.id)) {
+    await member.roles.remove(verifyRole);
+  }
+  if (unverifiedRole && !member.roles.cache.has(unverifiedRole.id)) {
+    await member.roles.add(unverifiedRole).catch(() => {});
+  }
+
+  statements.createModerationAction.run({
+    action_type: "unverify",
+    discord_user_id: member.id,
+    discord_tag: member.user.tag,
+    reason: `Unverified by ${message.author.tag}`,
+    duration_minutes: null,
+    role_id: verifyRole.id,
+    role_name: verifyRole.name,
+    active: 0,
+    expires_at: null,
+  });
+
+  await replyEmbed(message, {
+    color: "warning",
+    title: "Verification Removed",
+    description: `Removed ${roleMentionOrText(verifyRole.id)} from **${member.user.tag}**.`,
+  });
+}
+
+async function handlePurge(message, args) {
+  if (!(await ensureAdmin(message))) {
+    return;
+  }
+
+  const permissionCheck = await ensureBotPermissions(
+    message,
+    [PermissionFlagsBits.ManageMessages],
+    "`purge`",
+  );
+  if (!permissionCheck.ok) {
+    return;
+  }
+
+  const count = Number.parseInt(String(args[0] || "").trim(), 10);
+  if (!Number.isFinite(count) || count < 1 || count > 100) {
+    await replyUsage(message, `${config.commandPrefix}purge {1-100}`);
+    return;
+  }
+
+  const deleted = await message.channel.bulkDelete(count, true);
+  const removed = deleted.size;
+
+  logAction({
+    actorId: message.author.id,
+    actorTag: message.author.tag,
+    action: "purge_messages",
+    target: message.channel.id,
+    details: `${removed} deleted`,
+  });
+
+  await sendTemporaryChannelEmbed(message.channel, {
+    color: "success",
+    title: "Channel Purged",
+    description: `Deleted **${removed}** recent messages.`,
+  });
+}
+
+async function applyJoinFeatures(member) {
+  if (!member.guild || member.user.bot) {
+    return;
+  }
+
+  const features = getGuildFeatures(member.guild.id);
+  const rolesToApply = [features.autoRoleId, features.unverifiedRoleId]
+    .filter(Boolean)
+    .filter((value, index, list) => list.indexOf(value) === index);
+
+  if (rolesToApply.length) {
+    const botMember = await getGuildBotMember(member.guild).catch(() => null);
+    if (botMember) {
+      for (const roleId of rolesToApply) {
+        const role = member.guild.roles.cache.get(roleId);
+        if (!role || role.comparePositionTo(botMember.roles.highest) >= 0) {
+          continue;
+        }
+
+        await member.roles.add(role).catch(() => {});
+      }
+    }
+  }
+
+  if (!features.welcomeChannelId) {
+    return;
+  }
+
+  const channel =
+    member.guild.channels.cache.get(features.welcomeChannelId) ||
+    (await member.guild.channels.fetch(features.welcomeChannelId).catch(() => null));
+
+  if (!channel?.isTextBased()) {
+    return;
+  }
+
+  await channel
+    .send({
+      embeds: [
+        createEmbed({
+          color: "success",
+          title: `Welcome to ${member.guild.name}`,
+          description: renderWelcomeMessage(features.welcomeMessage, member),
+          fields: [
+            {
+              name: "Member Count",
+              value: String(member.guild.memberCount || member.guild.members.cache.size || 0),
+              inline: true,
+            },
+            {
+              name: "Verification",
+              value: features.verifyRoleId ? `Use ${roleMentionOrText(features.verifyRoleId)} when ready.` : "Not configured",
+              inline: true,
+            },
+          ],
+        }),
+      ],
+    })
+    .catch(() => {});
 }
 
 async function handleCommands(message) {
@@ -1710,6 +2206,14 @@ function createBot() {
     console.log(`Discord bot connected as ${client.user.tag}`);
   });
 
+  client.on("guildMemberAdd", async (member) => {
+    try {
+      await applyJoinFeatures(member);
+    } catch (error) {
+      console.error("Failed to apply join features", error);
+    }
+  });
+
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) {
       return;
@@ -1741,14 +2245,8 @@ function createBot() {
         case "gen-key":
           await handleGenerate(message, args, "normal");
           break;
-        case "bb":
-          await handleGenerate(message, args, "bb");
-          break;
-        case "sab":
-          await handleGenerate(message, args, "sab");
-          break;
-        case "arsenal":
-          await handleGenerate(message, args, "arsenal");
+        case "bloxfruits":
+          await handleGenerate(message, args, "bloxfruits");
           break;
         case "reset_hwid":
           await handleResetHwid(message, args);
@@ -1780,11 +2278,23 @@ function createBot() {
         case "role":
           await handleRole(message, args);
           break;
+        case "purge":
+          await handlePurge(message, args);
+          break;
+        case "verify":
+          await handleVerify(message, args, "verify");
+          break;
+        case "unverify":
+          await handleVerify(message, args, "unverify");
+          break;
         case "unban":
           await handleUnban(message, args);
           break;
         case "unmute":
           await handleUnmute(message, args);
+          break;
+        case "setup":
+          await handleSetup(message, args);
           break;
         default:
           break;

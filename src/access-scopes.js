@@ -12,23 +12,9 @@ const ACCESS_SCOPES = {
     publicPortal: false,
     requiresDuration: true,
   },
-  bb: {
-    scope: "bb",
-    label: "Blade Ball",
-    keyType: "premium",
-    publicPortal: false,
-    scriptLocked: true,
-  },
-  sab: {
-    scope: "sab",
-    label: "Steal A Brainrot",
-    keyType: "premium",
-    publicPortal: false,
-    scriptLocked: true,
-  },
-  arsenal: {
-    scope: "arsenal",
-    label: "Arsenal",
+  bloxfruits: {
+    scope: "bloxfruits",
+    label: "Blox Fruits",
     keyType: "premium",
     publicPortal: false,
     scriptLocked: true,
@@ -36,13 +22,13 @@ const ACCESS_SCOPES = {
 };
 
 const ACCESS_SCOPE_ALIASES = {
-  bladeball: "bb",
-  blade_ball: "bb",
-  "blade-ball": "bb",
-  "blade ball": "bb",
-  stealabrainrot: "sab",
-  steal_a_brainrot: "sab",
-  "steal a brainrot": "sab",
+  bloxfruit: "bloxfruits",
+  "blox fruit": "bloxfruits",
+  "blox-fruit": "bloxfruits",
+  blox_fruit: "bloxfruits",
+  "blox fruits": "bloxfruits",
+  "blox-fruits": "bloxfruits",
+  blox_fruits: "bloxfruits",
 };
 
 function normalizeAccessScope(value, fallback = "normal") {
@@ -60,6 +46,18 @@ function normalizeAccessScope(value, fallback = "normal") {
 
 function getScopeConfig(value) {
   return ACCESS_SCOPES[normalizeAccessScope(value)];
+}
+
+function isRecognizedScope(value) {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!raw) {
+    return false;
+  }
+
+  return Boolean(ACCESS_SCOPES[ACCESS_SCOPE_ALIASES[raw] || raw]);
 }
 
 function isScriptScope(value) {
@@ -83,6 +81,7 @@ module.exports = {
   allScopeConfigs,
   getScopeConfig,
   isScriptScope,
+  isRecognizedScope,
   keyTypeForScope,
   normalizeAccessScope,
   scopeLabel,

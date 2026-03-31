@@ -4,7 +4,7 @@ const config = require("./config");
 const { statements, runMaintenance } = require("./db");
 const { performDiscordAdminAction } = require("./discord-admin");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist, validateKey } = require("./key-service");
-const { allScopeConfigs, keyTypeForScope, normalizeAccessScope } = require("./access-scopes");
+const { allScopeConfigs, isRecognizedScope, keyTypeForScope, normalizeAccessScope } = require("./access-scopes");
 const { applyAutoModPreset, getAutoModConfig, listEnabledRules, saveAutoModConfig } = require("./automod");
 const {
   authenticateAdmin,
@@ -144,7 +144,7 @@ function getDashboardPayload() {
       totalKeys: keys.length,
       activeKeys: keys.filter(keyIsActive).length,
       premiumKeys: keys.filter((record) => record.type === "premium").length,
-      scriptKeys: keys.filter((record) => ["bb", "sab", "arsenal"].includes(record.scope)).length,
+      scriptKeys: keys.filter((record) => ["bloxfruits"].includes(record.scope)).length,
       normalKeys: keys.filter((record) => record.type === "normal").length,
       totalUsers: users.length,
       blacklistedUsers: users.filter((record) => record.blacklisted).length,
@@ -314,7 +314,11 @@ app.post("/api/admin/keys/issue", requireAdminApi, (req, res) => {
     const discordUserId = String(req.body?.discordUserId || "").trim();
     const discordTag = String(req.body?.discordTag || discordUserId).trim();
     const robloxUser = String(req.body?.robloxUser || "").trim();
-    const scope = normalizeAccessScope(req.body?.scope || req.body?.type || "normal");
+    const rawScope = String(req.body?.scope || req.body?.type || "normal").trim();
+    if (rawScope && !isRecognizedScope(rawScope)) {
+      throw new Error("Unsupported key scope.");
+    }
+    const scope = normalizeAccessScope(rawScope || "normal");
     const type = keyTypeForScope(scope);
     const durationMs = parseDurationToken(req.body?.duration);
 
