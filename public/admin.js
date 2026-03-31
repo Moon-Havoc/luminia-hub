@@ -23,6 +23,8 @@ const issueDiscordId = document.getElementById("issue-discord-id");
 const issueDiscordTag = document.getElementById("issue-discord-tag");
 const issueRobloxUser = document.getElementById("issue-roblox-user");
 const issueKeyType = document.getElementById("issue-key-type");
+const issueKeyDuration = document.getElementById("issue-key-duration");
+const issueKeyNote = document.getElementById("issue-key-note");
 const issueKeyButton = document.getElementById("issue-key-button");
 const issueKeyFeedback = document.getElementById("issue-key-feedback");
 
@@ -89,6 +91,21 @@ const state = {
 
 let slugEditedManually = false;
 let activeDashboardPanel = "overview";
+
+function accessLabel(scope) {
+  switch (String(scope || "").toLowerCase()) {
+    case "premium":
+      return "Premium";
+    case "bb":
+      return "Blade Ball";
+    case "sab":
+      return "Steal A Brainrot";
+    case "arsenal":
+      return "Arsenal";
+    default:
+      return "Normal";
+  }
+}
 
 function setFeedback(node, message, type) {
   node.textContent = message;
@@ -602,6 +619,7 @@ function filteredKeys() {
       record.discord_user_id,
       record.discord_tag,
       record.type,
+      record.scope,
       record.status,
       record.revoked_reason,
     ]
@@ -683,6 +701,14 @@ function renderKeys() {
 
   visibleKeys.forEach((record, index) => {
     const pills = [
+      createPill(
+        accessLabel(record.scope),
+        ["bb", "sab", "arsenal"].includes(record.scope)
+          ? "maintenance"
+          : record.type === "premium"
+            ? "beta"
+            : "stable",
+      ),
       createPill(record.type === "premium" ? "Premium" : "Normal", record.type === "premium" ? "beta" : "stable"),
       createPill(record.status, toneFromStatus(record.status)),
       createPill(keyIsActive(record) ? "Live" : "Inactive", keyIsActive(record) ? "stable" : "dormant"),
@@ -698,6 +724,7 @@ function renderKeys() {
       summary: record.key,
       meta: createMetaText([
         record.discord_tag || record.discord_user_id || "No Discord tag",
+        `${accessLabel(record.scope)} scope`,
         `Created ${formatTimestamp(record.created_at)}`,
         `Expires ${formatTimestamp(record.expires_at)}`,
       ]),
@@ -852,6 +879,25 @@ function prefillUserForms(userId) {
   discordActionTarget.value = record.discord_user_id || record.discord_tag || "";
 }
 
+function updateIssueKeyHints() {
+  const scope = issueKeyType.value;
+  const needsDuration = scope === "premium";
+
+  issueKeyDuration.disabled = !needsDuration;
+  issueKeyDuration.placeholder = needsDuration ? "7d" : "Only used for timed premium";
+  if (!needsDuration) {
+    issueKeyDuration.value = "";
+  }
+
+  if (scope === "premium") {
+    issueKeyNote.value = "Premium keys expire after the duration you set.";
+  } else if (scope === "normal") {
+    issueKeyNote.value = "Normal keys are public-site compatible.";
+  } else {
+    issueKeyNote.value = `${accessLabel(scope)} keys only validate on that paid script.`;
+  }
+}
+
 async function runUserAction(action) {
   clearFeedback(userActionFeedback);
 
@@ -969,6 +1015,8 @@ dashboardTabs.forEach((button) => {
   });
 });
 
+issueKeyType.addEventListener("change", updateIssueKeyHints);
+
 issueKeyForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearFeedback(issueKeyFeedback);
@@ -977,7 +1025,8 @@ issueKeyForm.addEventListener("submit", async (event) => {
     discordUserId: issueDiscordId.value.trim(),
     discordTag: issueDiscordTag.value.trim(),
     robloxUser: issueRobloxUser.value.trim(),
-    type: issueKeyType.value,
+    scope: issueKeyType.value,
+    duration: issueKeyDuration.value.trim(),
   };
 
   try {
@@ -992,8 +1041,8 @@ issueKeyForm.addEventListener("submit", async (event) => {
     setFeedback(
       issueKeyFeedback,
       payload.created
-        ? `Key created for ${payload.record.roblox_user}: ${payload.record.key}`
-        : `Existing active key reused for ${payload.record.roblox_user}: ${payload.record.key}`,
+        ? `${accessLabel(payload.record.scope)} key created for ${payload.record.roblox_user}: ${payload.record.key}`
+        : `${accessLabel(payload.record.scope)} key reused for ${payload.record.roblox_user}: ${payload.record.key}`,
       "success",
     );
   } catch (error) {
@@ -1225,3 +1274,4 @@ userList.addEventListener("click", async (event) => {
 
 bootstrap();
 updateDiscordActionFieldHints();
+updateIssueKeyHints();

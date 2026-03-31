@@ -64,7 +64,7 @@
             <div class="hero-meta">
               <span class="meta-live">LIVE</span>
               <span>24H KEYS</span>
-              <span>PREMIUM</span>
+              <span>TIMED PREMIUM</span>
               <span>ROBLOX SYNC</span>
             </div>
 
@@ -131,7 +131,7 @@
           <article class="feature-card" data-reveal>
             <span>02</span>
             <h2>Premium</h2>
-            <p>Staff issue lifetime keys with DM delivery and quick revocation.</p>
+            <p>Staff issue timed premium keys and script-locked paid access in Discord.</p>
           </article>
           <article class="feature-card" data-reveal>
             <span>03</span>
@@ -143,9 +143,9 @@
         <section id="access" class="content-grid">
           <section class="panel access-panel" data-reveal>
               <div class="panel-head">
-                <p class="eyebrow">NORMAL_KEY_PORTAL</p>
-              <h2>Generate a normal key</h2>
-              <p>Public access panel for 24-hour keys.</p>
+                <p class="eyebrow">ACCESS_PORTAL</p>
+              <h2 id="access-panel-title">Generate a normal key</h2>
+              <p id="access-panel-copy">Public access panel for 24-hour keys.</p>
             </div>
 
             <div id="prefill-banner" class="prefill-banner hidden">
@@ -153,27 +153,58 @@
               <span id="prefill-copy"></span>
             </div>
 
-            <form id="key-form" class="access-form">
-              <label>
-                <span>Discord User ID</span>
-                <input id="discordUserId" name="discordUserId" placeholder="123456789012345678" required />
-              </label>
-              <label>
-                <span>Discord Tag or Username</span>
-                <input id="discordTag" name="discordTag" placeholder="user#0001 or user" required />
-              </label>
-              <label>
-                <span>Roblox Username</span>
-                <input id="robloxUser" name="robloxUser" placeholder="RobloxUsername" required />
-              </label>
+            <div id="normal-access-view">
+              <form id="key-form" class="access-form">
+                <label>
+                  <span>Discord User ID</span>
+                  <input id="discordUserId" name="discordUserId" placeholder="123456789012345678" required />
+                </label>
+                <label>
+                  <span>Discord Tag or Username</span>
+                  <input id="discordTag" name="discordTag" placeholder="user#0001 or user" required />
+                </label>
+                <label>
+                  <span>Roblox Username</span>
+                  <input id="robloxUser" name="robloxUser" placeholder="RobloxUsername" required />
+                </label>
+
+                <div class="form-actions">
+                  <button id="generate-button" type="submit">Generate Key</button>
+                  <p class="form-note">Issued format: `LUM_15Characters`</p>
+                </div>
+              </form>
+
+              <div id="result" class="result-card hidden"></div>
+            </div>
+
+            <div id="paid-access-view" class="paid-access-view hidden">
+              <div class="paid-access-grid">
+                <article>
+                  <span class="distribution-tag">PAID_ACCESS</span>
+                  <h3 id="paid-access-title">Paid script key required</h3>
+                  <p id="paid-access-description">
+                    This script uses a staff-issued paid key. Normal website keys will not unlock it.
+                  </p>
+                </article>
+                <article>
+                  <span class="distribution-tag">DISCORD_COMMAND</span>
+                  <code id="paid-access-command">!bb {user} {robloxuser}</code>
+                  <p id="paid-access-command-copy">Ask staff to issue the correct key for this Roblox username.</p>
+                </article>
+              </div>
 
               <div class="form-actions">
-                <button id="generate-button" type="submit">Generate Key</button>
-                <p class="form-note">Issued format: `LUM_15Characters`</p>
+                <a
+                  class="primary-button"
+                  href="https://discord.gg/vFdWTQ3uKC"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open Discord
+                </a>
+                <a class="secondary-button" href="/scripts">View Script Library</a>
               </div>
-            </form>
-
-            <div id="result" class="result-card hidden"></div>
+            </div>
           </section>
 
           <div class="stacked-panels">
@@ -211,11 +242,15 @@
               <div class="rule-grid">
                 <article>
                   <strong>Normal</strong>
-                  <p>24 hours. Renew after expiry.</p>
+                  <p>24 hours. Generated from the public site.</p>
                 </article>
                 <article>
                   <strong>Premium</strong>
-                  <p>Never expires. Staff managed.</p>
+                  <p>Timed by staff with `!prem-gen {user} {robloxuser} {duration}`.</p>
+                </article>
+                <article>
+                  <strong>Paid Scripts</strong>
+                  <p>Blade Ball, Steal A Brainrot, and Arsenal use script-locked keys.</p>
                 </article>
                 <article>
                   <strong>DM Delivery</strong>
@@ -223,7 +258,7 @@
                 </article>
                 <article>
                   <strong>Username Match</strong>
-                  <p>Verification is tied to the recorded Roblox user.</p>
+                  <p>Verification is tied to the recorded Roblox user and expected script.</p>
                 </article>
               </div>
 
@@ -260,7 +295,10 @@
             <article class="command-block" data-reveal>
               <h3>Access</h3>
               <code>!gen-key {user} {robloxuser}</code>
-              <code>!prem-gen {user} {robloxuser}</code>
+              <code>!prem-gen {user} {robloxuser} {duration}</code>
+              <code>!bb {user} {robloxuser}</code>
+              <code>!sab {user} {robloxuser}</code>
+              <code>!arsenal {user} {robloxuser}</code>
               <code>!revoke_key {user} {key}</code>
               <code>!revoke_prem {user} {key}</code>
               <code>!reset_hwid</code>
@@ -283,6 +321,13 @@
               <code>!unban {user}</code>
               <code>!unmute {user}</code>
               <code>!role {user} {role}</code>
+            </article>
+
+            <article class="command-block" data-reveal>
+              <h3>Auto-Mod</h3>
+              <code>Invite links: filtered</code>
+              <code>Mass mentions: filtered</code>
+              <code>Repeat spam: filtered</code>
             </article>
           </div>
         </section>

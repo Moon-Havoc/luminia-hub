@@ -8,8 +8,17 @@ const {
 const config = require("./config");
 const { statements } = require("./db");
 const { setBotClient } = require("./discord-admin");
+const { isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist } = require("./key-service");
 const { isBotAdmin } = require("./permissions");
+
+const AUTO_MOD_REPEAT_WINDOW_MS = 12_000;
+const AUTO_MOD_REPEAT_THRESHOLD = 3;
+const AUTO_MOD_MENTION_LIMIT = 5;
+const AUTO_MOD_TIMEOUT_MS = 10 * 60_000;
+const INVITE_PATTERN = /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord(?:app)?\.com\/invite)\/([a-z0-9-]+)/i;
+const TRUSTED_INVITE_CODES = new Set(["vFdWTQ3uKC".toLowerCase()]);
+const recentMessages = new Map();
 
 function parseDuration(value) {
   const input = String(value || "").trim().toLowerCase();
@@ -28,6 +37,7 @@ const REQUIRED_BOT_PERMISSIONS = [
   PermissionFlagsBits.SendMessages,
   PermissionFlagsBits.EmbedLinks,
   PermissionFlagsBits.ReadMessageHistory,
+  PermissionFlagsBits.ManageMessages,
   PermissionFlagsBits.KickMembers,
   PermissionFlagsBits.BanMembers,
   PermissionFlagsBits.ModerateMembers,
@@ -36,7 +46,10 @@ const REQUIRED_BOT_PERMISSIONS = [
 
 const COMMAND_DESCRIPTIONS = [
   "`!gen-key {user} {robloxuser}` - create a 24-hour key and DM it to the user",
-  "`!prem-gen {user} {robloxuser}` - create a premium key that never expires",
+  "`!prem-gen {user} {robloxuser} {duration}` - create a timed premium key and DM it to the user",
+  "`!bb {user} {robloxuser}` - create a Blade Ball paid key locked to Blade Ball",
+  "`!sab {user} {robloxuser}` - create a Steal A Brainrot paid key locked to that script",
+  "`!arsenal {user} {robloxuser}` - create an Arsenal paid key locked to Arsenal",
   "`!revoke_key {user} {key}` - revoke a normal key and DM the notice",
   "`!revoke_prem {user} {key}` - revoke a premium key and DM the notice",
   "`!reset_hwid [user]` - reset your HWID, or another user's if you are staff",
@@ -58,11 +71,95 @@ const PERMISSION_LABELS = {
   [PermissionFlagsBits.SendMessages.toString()]: "Send Messages",
   [PermissionFlagsBits.EmbedLinks.toString()]: "Embed Links",
   [PermissionFlagsBits.ReadMessageHistory.toString()]: "Read Message History",
+  [PermissionFlagsBits.ManageMessages.toString()]: "Manage Messages",
   [PermissionFlagsBits.KickMembers.toString()]: "Kick Members",
   [PermissionFlagsBits.BanMembers.toString()]: "Ban Members",
   [PermissionFlagsBits.ModerateMembers.toString()]: "Moderate Members",
   [PermissionFlagsBits.ManageRoles.toString()]: "Manage Roles",
 };
+
+function commandNameForScope(scope) {
+  const cleanScope = normalizeAccessScope(scope);
+  switch (cleanScope) {
+    case "normal":
+      return "gen-key";
+    case "premium":
+      return "prem-gen";
+    default:
+      return cleanScope;
+  }
+}
+
+function accessLabelForRecord(record) {
+  return scopeLabel(record.scope || (record.type === "premium" ? "premium" : "normal"));
+}
+
+function normalizeMessageContent(content) {
+  return String(content || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function recordRepeatMessage(message) {
+  const now = Date.now();
+  const authorId = message.author.id;
+  const normalized = normalizeMessageContent(message.content);
+  const history = (recentMessages.get(authorId) || []).filter((entry) => now - entry.timestamp <= AUTO_MOD_REPEAT_WINDOW_MS);
+  history.push({
+    content: normalized,
+    timestamp: now,
+  });
+  recentMessages.set(authorId, history);
+  return history.filter((entry) => entry.content === normalized).length;
+}
+
+function autoModReason(message) {
+  const normalized = normalizeMessageContent(message.content);
+  if (!normalized) {
+    return null;
+  }
+
+  const inviteMatch = normalized.match(INVITE_PATTERN);
+  if (inviteMatch) {
+    const inviteCode = String(inviteMatch[1] || "").toLowerCase();
+    if (!TRUSTED_INVITE_CODES.has(inviteCode)) {
+      return {
+        code: "invite_link",
+        description: "External Discord invite links are not allowed here.",
+        deleteMessage: true,
+        timeoutMs: AUTO_MOD_TIMEOUT_MS,
+      };
+    }
+  }
+
+  const mentionCount =
+    message.mentions.users.size +
+    message.mentions.roles.size +
+    (message.mentions.everyone ? AUTO_MOD_MENTION_LIMIT : 0);
+  if (mentionCount >= AUTO_MOD_MENTION_LIMIT) {
+    return {
+      code: "mass_mentions",
+      description: "Mass mentions triggered automod.",
+      deleteMessage: true,
+      timeoutMs: AUTO_MOD_TIMEOUT_MS,
+    };
+  }
+
+  if (normalized.length >= 6) {
+    const repeats = recordRepeatMessage(message);
+    if (repeats >= AUTO_MOD_REPEAT_THRESHOLD) {
+      return {
+        code: "repeat_spam",
+        description: "Repeated message spam triggered automod.",
+        deleteMessage: true,
+        timeoutMs: 5 * 60_000,
+      };
+    }
+  }
+
+  return null;
+}
 
 async function resolveMember(message, raw) {
   if (!raw) {
@@ -125,6 +222,11 @@ function keyFields(record) {
       inline: false,
     },
     {
+      name: "Access",
+      value: accessLabelForRecord(record),
+      inline: true,
+    },
+    {
       name: "Type",
       value: record.type,
       inline: true,
@@ -147,6 +249,11 @@ function deliveryFields(record) {
     {
       name: "Roblox User",
       value: record.roblox_user,
+      inline: true,
+    },
+    {
+      name: "Access",
+      value: accessLabelForRecord(record),
       inline: true,
     },
     {
@@ -336,17 +443,102 @@ async function ensureAdmin(message) {
   return true;
 }
 
-async function handleGenerate(message, args, type) {
+async function handleAutoMod(message) {
+  if (!message.member || isBotAdmin(message.member)) {
+    return false;
+  }
+
+  const violation = autoModReason(message);
+  if (!violation) {
+    return false;
+  }
+
+  const botMember = await getBotMember(message).catch(() => null);
+  const canDelete =
+    Boolean(botMember) &&
+    message.deletable &&
+    message.channel?.permissionsFor(botMember)?.has(PermissionFlagsBits.ManageMessages);
+  const canTimeout =
+    Boolean(botMember) &&
+    violation.timeoutMs &&
+    botMember.permissions.has(PermissionFlagsBits.ModerateMembers) &&
+    message.member.moderatable;
+
+  if (canDelete && violation.deleteMessage) {
+    await message.delete().catch(() => {});
+  }
+
+  if (canTimeout) {
+    await message.member.timeout(violation.timeoutMs, `Automod: ${violation.code}`).catch(() => {});
+    statements.createModerationAction.run({
+      action_type: "automod",
+      discord_user_id: message.author.id,
+      discord_tag: message.author.tag,
+      reason: violation.description,
+      duration_minutes: Math.round(violation.timeoutMs / 60000),
+      role_id: null,
+      role_name: null,
+      active: 1,
+      expires_at: new Date(Date.now() + violation.timeoutMs).toISOString(),
+    });
+  }
+
+  const warning = await message.channel
+    .send({
+      embeds: [
+        createEmbed({
+          color: "warning",
+          title: "Auto-Mod Triggered",
+          description: `A message from **${message.author.tag}** was filtered.`,
+          fields: [
+            {
+              name: "Reason",
+              value: violation.description,
+              inline: false,
+            },
+            {
+              name: "Action",
+              value: canDelete
+                ? canTimeout
+                  ? "Message removed and user timed out."
+                  : "Message removed."
+                : canTimeout
+                  ? "User timed out."
+                  : "Automod logged the event.",
+              inline: false,
+            },
+          ],
+        }),
+      ],
+    })
+    .catch(() => null);
+
+  if (warning) {
+    setTimeout(() => {
+      warning.delete().catch(() => {});
+    }, 15_000);
+  }
+
+  return true;
+}
+
+async function handleGenerate(message, args, requestedScope) {
   if (!(await ensureAdmin(message))) {
     return;
   }
 
+  const scope = normalizeAccessScope(requestedScope, "normal");
+  const type = keyTypeForScope(scope);
+  const accessLabel = scopeLabel(scope);
+  const commandName = commandNameForScope(scope);
   const targetRaw = args[0];
   const robloxUser = args[1];
-  if (!targetRaw || !robloxUser) {
+  const durationRaw = args[2];
+
+  if (!targetRaw || !robloxUser || (scope === "premium" && !durationRaw)) {
     await replyUsage(
       message,
-      `${config.commandPrefix}${type === "premium" ? "prem-gen" : "gen-key"} {user} {robloxuser}`,
+      `${config.commandPrefix}${commandName} {user} {robloxuser}${scope === "premium" ? " {duration}" : ""}`,
     );
     return;
   }
@@ -362,11 +554,14 @@ async function handleGenerate(message, args, type) {
   }
 
   try {
+    const durationMs = scope === "premium" ? parseDuration(durationRaw) : null;
     const result = createOrReuseKey({
       discordUserId: member.id,
       discordTag: member.user.tag,
       robloxUser,
       type,
+      scope,
+      durationMs,
       force: true,
       actorId: message.author.id,
       actorTag: message.author.tag,
@@ -375,7 +570,7 @@ async function handleGenerate(message, args, type) {
     try {
       await sendEmbed(member.user, {
         color: type === "premium" ? "info" : "success",
-        title: `${type === "premium" ? "Premium" : "Normal"} Key Ready`,
+        title: `${accessLabel} Key Ready`,
         description: `Here is your Luminia Hub access key for **${result.record.roblox_user}**.`,
         fields: keyFields(result.record),
         footerText: `Issued by ${message.author.tag}`,
@@ -383,7 +578,7 @@ async function handleGenerate(message, args, type) {
 
       await replyEmbed(message, {
         color: type === "premium" ? "info" : "success",
-        title: `${type === "premium" ? "Premium" : "Normal"} Key Delivered`,
+        title: `${accessLabel} Key Delivered`,
         description: `The key for **${member.user.tag}** was sent by DM.`,
         fields: deliveryFields(result.record),
       });
@@ -393,7 +588,7 @@ async function handleGenerate(message, args, type) {
       try {
         await sendEmbed(message.author, {
           color: "warning",
-          title: `${type === "premium" ? "Premium" : "Normal"} Key Delivery Failed`,
+          title: `${accessLabel} Key Delivery Failed`,
           description: `I couldn't DM **${member.user.tag}**, so I'm sending the key to you instead.`,
           fields: keyFields(result.record),
           footerText: "Share this manually only if appropriate.",
@@ -459,11 +654,12 @@ async function handleRevoke(message, args, type) {
       actorId: message.author.id,
       actorTag: message.author.tag,
     });
+    const accessLabel = accessLabelForRecord(updated);
 
     try {
       await sendEmbed(member.user, {
         color: "warning",
-        title: `${type === "premium" ? "Premium" : "Normal"} Key Revoked`,
+        title: `${accessLabel} Key Revoked`,
         description: `Your Luminia Hub key for **${updated.roblox_user}** has been revoked.`,
         fields: keyFields(updated),
         footerText: `Revoked by ${message.author.tag}`,
@@ -471,7 +667,7 @@ async function handleRevoke(message, args, type) {
 
       await replyEmbed(message, {
         color: "warning",
-        title: `${type === "premium" ? "Premium" : "Normal"} Key Revoked`,
+        title: `${accessLabel} Key Revoked`,
         description: `The revocation notice for **${member.user.tag}** was sent by DM.`,
         fields: deliveryFields(updated),
       });
@@ -481,7 +677,7 @@ async function handleRevoke(message, args, type) {
       try {
         await sendEmbed(message.author, {
           color: "warning",
-          title: `${type === "premium" ? "Premium" : "Normal"} Revocation Notice Failed`,
+          title: `${accessLabel} Revocation Notice Failed`,
           description: `I couldn't DM **${member.user.tag}**, so I'm sending the revoked key details to you instead.`,
           fields: keyFields(updated),
           footerText: "Share this manually only if appropriate.",
@@ -994,6 +1190,7 @@ function createBot() {
     }
 
     if (!message.content.startsWith(config.commandPrefix)) {
+      await handleAutoMod(message);
       return;
     }
 
@@ -1014,6 +1211,15 @@ function createBot() {
           break;
         case "gen-key":
           await handleGenerate(message, args, "normal");
+          break;
+        case "bb":
+          await handleGenerate(message, args, "bb");
+          break;
+        case "sab":
+          await handleGenerate(message, args, "sab");
+          break;
+        case "arsenal":
+          await handleGenerate(message, args, "arsenal");
           break;
         case "reset_hwid":
           await handleResetHwid(message, args);

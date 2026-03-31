@@ -28,6 +28,7 @@ db.exec(`
     discord_tag TEXT,
     roblox_user TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('normal', 'premium')),
+    scope TEXT NOT NULL DEFAULT 'normal',
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'revoked', 'expired')),
     created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL,
@@ -93,12 +94,20 @@ ensureColumn("scripts", "cover_image", "cover_image TEXT");
 ensureColumn("scripts", "place_id", "place_id TEXT");
 ensureColumn("scripts", "status_label", "status_label TEXT NOT NULL DEFAULT 'Working'");
 ensureColumn("scripts", "feature_list", "feature_list TEXT NOT NULL DEFAULT ''");
+ensureColumn("keys", "scope", "scope TEXT NOT NULL DEFAULT 'normal'");
 
-// Preserve lifetime premium keys in existing databases without rebuilding the table.
 db.exec(`
   UPDATE keys
-  SET expires_at = 'never'
-  WHERE type = 'premium' AND status = 'active' AND expires_at != 'never';
+  SET scope = CASE
+    WHEN type = 'premium' THEN 'premium'
+    ELSE 'normal'
+  END
+  WHERE scope IS NULL OR trim(scope) = '';
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_keys_scope_lookup
+    ON keys(discord_user_id, roblox_user, type, scope, status, expires_at);
 `);
 
 const statements = {
@@ -116,7 +125,7 @@ const statements = {
     SELECT * FROM users WHERE discord_user_id = ?
   `),
   findUserByRoblox: db.prepare(`
-    SELECT * FROM users WHERE roblox_user = ?
+    SELECT * FROM users WHERE lower(roblox_user) = lower(?)
   `),
   resetHwid: db.prepare(`
     UPDATE users
@@ -130,17 +139,18 @@ const statements = {
   `),
   insertKey: db.prepare(`
     INSERT INTO keys (
-      key, discord_user_id, discord_tag, roblox_user, type, status, created_at, expires_at
+      key, discord_user_id, discord_tag, roblox_user, type, scope, status, created_at, expires_at
     ) VALUES (
-      @key, @discord_user_id, @discord_tag, @roblox_user, @type, @status, @created_at, @expires_at
+      @key, @discord_user_id, @discord_tag, @roblox_user, @type, @scope, @status, @created_at, @expires_at
     )
   `),
   findActiveKey: db.prepare(`
     SELECT *
     FROM keys
     WHERE discord_user_id = ?
-      AND roblox_user = ?
+      AND lower(roblox_user) = lower(?)
       AND type = ?
+      AND scope = ?
       AND status = 'active'
       AND (expires_at = 'never' OR datetime(expires_at) > datetime('now'))
     ORDER BY datetime(created_at) DESC

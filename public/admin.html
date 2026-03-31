@@ -118,7 +118,7 @@
                   <strong id="active-key-label">0</strong>
                 </article>
                 <article class="metric-card" data-reveal>
-                  <span class="metric-label">Premium keys</span>
+                  <span class="metric-label">Paid / premium</span>
                   <strong id="premium-key-label">0</strong>
                 </article>
                 <article class="metric-card" data-reveal>
@@ -176,11 +176,36 @@
                       <input id="issue-roblox-user" placeholder="Rarikk67" required />
                     </label>
                     <label>
-                      <span>Key Type</span>
+                      <span>Access Scope</span>
                       <select id="issue-key-type">
                         <option value="normal">Normal (24h)</option>
-                        <option value="premium">Premium (Never Expires)</option>
+                        <option value="premium">Premium (Timed)</option>
+                        <option value="bb">Blade Ball</option>
+                        <option value="sab">Steal A Brainrot</option>
+                        <option value="arsenal">Arsenal</option>
                       </select>
+                    </label>
+                  </div>
+
+                  <div class="field-grid">
+                    <label>
+                      <span>Duration</span>
+                      <input id="issue-key-duration" placeholder="7d (premium only)" />
+                    </label>
+                    <label>
+                      <span>Issued Format</span>
+                      <input value="LUM_15Characters" disabled />
+                    </label>
+                  </div>
+
+                  <div class="field-grid">
+                    <label>
+                      <span>Delivery Mode</span>
+                      <input value="Discord DM" disabled />
+                    </label>
+                    <label>
+                      <span>Scope Note</span>
+                      <input id="issue-key-note" value="Normal keys are public-site compatible." disabled />
                     </label>
                   </div>
 

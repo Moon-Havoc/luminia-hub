@@ -4,7 +4,45 @@ const generateButton = document.getElementById("generate-button");
 const servicePill = document.getElementById("service-pill");
 const prefillBanner = document.getElementById("prefill-banner");
 const prefillCopy = document.getElementById("prefill-copy");
+const accessPanelTitle = document.getElementById("access-panel-title");
+const accessPanelCopy = document.getElementById("access-panel-copy");
+const normalAccessView = document.getElementById("normal-access-view");
+const paidAccessView = document.getElementById("paid-access-view");
+const paidAccessTitle = document.getElementById("paid-access-title");
+const paidAccessDescription = document.getElementById("paid-access-description");
+const paidAccessCommand = document.getElementById("paid-access-command");
+const paidAccessCommandCopy = document.getElementById("paid-access-command-copy");
 const terminalLines = [...document.querySelectorAll("[data-terminal-line]")];
+
+const ACCESS_SCOPES = {
+  normal: {
+    label: "Normal access",
+  },
+  premium: {
+    label: "Premium access",
+    command: "!prem-gen {user} {robloxuser} {duration}",
+    title: "Premium key required",
+    description: "This access lane uses a staff-issued premium key with a set duration.",
+  },
+  bb: {
+    label: "Blade Ball",
+    command: "!bb {user} {robloxuser}",
+    title: "Blade Ball key required",
+    description: "This script is locked to Blade Ball paid keys. Normal website keys will not unlock it.",
+  },
+  sab: {
+    label: "Steal A Brainrot",
+    command: "!sab {user} {robloxuser}",
+    title: "Steal A Brainrot key required",
+    description: "This script is locked to Steal A Brainrot paid keys. Normal website keys will not unlock it.",
+  },
+  arsenal: {
+    label: "Arsenal",
+    command: "!arsenal {user} {robloxuser}",
+    title: "Arsenal key required",
+    description: "This script is locked to Arsenal paid keys. Normal website keys will not unlock it.",
+  },
+};
 
 function typeTerminalLine(node, text, delay) {
   window.setTimeout(() => {
@@ -110,6 +148,7 @@ function renderResult(payload, error = false) {
   }
 
   const headline = payload.created ? "Fresh key generated" : "Existing active key found";
+  const accessName = ACCESS_SCOPES[payload.scope || "normal"]?.label || payload.scope || payload.type;
   result.innerHTML = `
     <div class="result-header">
       <p class="result-label">${headline}</p>
@@ -120,6 +159,10 @@ function renderResult(payload, error = false) {
       <button class="copy-button" type="button" data-copy-key="${payload.key}">Copy Key</button>
     </div>
     <div class="result-meta">
+      <article>
+        <span>Access</span>
+        <strong>${accessName}</strong>
+      </article>
       <article>
         <span>Type</span>
         <strong>${payload.type}</strong>
@@ -140,14 +183,45 @@ function renderResult(payload, error = false) {
   });
 }
 
+function toggleAccessMode(scope, robloxUser) {
+  const normalizedScope = ACCESS_SCOPES[scope] ? scope : "normal";
+  const access = ACCESS_SCOPES[normalizedScope] || ACCESS_SCOPES.normal;
+  const isPaid = normalizedScope !== "normal";
+
+  normalAccessView.classList.toggle("hidden", isPaid);
+  paidAccessView.classList.toggle("hidden", !isPaid);
+
+  if (!isPaid) {
+    accessPanelTitle.textContent = "Generate a normal key";
+    accessPanelCopy.textContent = "Public access panel for 24-hour keys.";
+    return;
+  }
+
+  accessPanelTitle.textContent = `${access.label} access`;
+  accessPanelCopy.textContent = "This route is reserved for staff-issued access keys.";
+  paidAccessTitle.textContent = access.title;
+  paidAccessDescription.textContent = access.description;
+  paidAccessCommand.textContent = access.command;
+  paidAccessCommandCopy.textContent = robloxUser
+    ? `Ask staff to issue this key for ${robloxUser}.`
+    : "Ask staff to issue the correct key for this Roblox username.";
+}
+
 const query = new URLSearchParams(window.location.search);
 const robloxUserField = document.getElementById("robloxUser");
 const prefilledRobloxUser = query.get("robloxUser");
+const rawRequestedScope = query.get("scope");
+const requestedScope = ACCESS_SCOPES[rawRequestedScope] ? rawRequestedScope : "normal";
 if (prefilledRobloxUser && robloxUserField) {
   robloxUserField.value = prefilledRobloxUser;
   prefillBanner.classList.remove("hidden");
-  prefillCopy.textContent = `Roblox user detected: ${prefilledRobloxUser}`;
+  prefillCopy.textContent =
+    requestedScope !== "normal"
+      ? `Roblox user detected: ${prefilledRobloxUser} • ${ACCESS_SCOPES[requestedScope].label} route`
+      : `Roblox user detected: ${prefilledRobloxUser}`;
 }
+
+toggleAccessMode(requestedScope, prefilledRobloxUser);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

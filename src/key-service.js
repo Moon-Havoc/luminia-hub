@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { statements, logAction, runMaintenance } = require("./db");
+const { isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
 
 const LIFETIME_EXPIRY = "never";
 
@@ -25,6 +26,44 @@ function normalizeName(value) {
   return String(value || "").trim();
 }
 
+function expiryFromDuration(durationMs) {
+  return new Date(Date.now() + durationMs).toISOString();
+}
+
+function isExpired(record) {
+  if (!record || record.expires_at === LIFETIME_EXPIRY) {
+    return false;
+  }
+
+  const expiresAt = Date.parse(record.expires_at);
+  return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+}
+
+function resolveExpiry({ type, scope, durationMs }) {
+  if (Number.isFinite(durationMs) && durationMs > 0) {
+    return expiryFromDuration(durationMs);
+  }
+
+  if (type === "normal") {
+    return hoursFromNow(24);
+  }
+
+  if (isScriptScope(scope)) {
+    return LIFETIME_EXPIRY;
+  }
+
+  return LIFETIME_EXPIRY;
+}
+
+function invalid(reason, reasonCode, extras = {}) {
+  return {
+    valid: false,
+    reason,
+    reasonCode,
+    ...extras,
+  };
+}
+
 function ensureUserRecord({ discordUserId, discordTag, robloxUser }) {
   statements.upsertUser.run({
     discord_user_id: discordUserId || null,
@@ -45,6 +84,8 @@ function createOrReuseKey({
   discordTag,
   robloxUser,
   type = "normal",
+  scope = "normal",
+  durationMs = null,
   force = false,
   actorId,
   actorTag,
@@ -52,6 +93,9 @@ function createOrReuseKey({
   runMaintenance();
 
   const cleanRobloxUser = normalizeName(robloxUser);
+  const cleanScope = normalizeAccessScope(scope, type === "premium" ? "premium" : "normal");
+  const resolvedType = keyTypeForScope(cleanScope) || type;
+
   if (!cleanRobloxUser) {
     throw new Error("Roblox username is required.");
   }
@@ -64,7 +108,7 @@ function createOrReuseKey({
   }
 
   if (!force && discordUserId) {
-    const existing = statements.findActiveKey.get(discordUserId, cleanRobloxUser, type);
+    const existing = statements.findActiveKey.get(discordUserId, cleanRobloxUser, resolvedType, cleanScope);
     if (existing) {
       return { record: existing, created: false };
     }
@@ -75,19 +119,25 @@ function createOrReuseKey({
     discord_user_id: discordUserId || null,
     discord_tag: discordTag || null,
     roblox_user: cleanRobloxUser,
-    type,
+    type: resolvedType,
+    scope: cleanScope,
     status: "active",
     created_at: nowIso(),
-    expires_at: type === "premium" ? LIFETIME_EXPIRY : hoursFromNow(24),
+    expires_at: resolveExpiry({ type: resolvedType, scope: cleanScope, durationMs }),
   };
 
   statements.insertKey.run(record);
   logAction({
     actorId,
     actorTag,
-    action: type === "premium" ? "create_premium_key" : "create_normal_key",
+    action:
+      resolvedType === "premium"
+        ? isScriptScope(cleanScope)
+          ? "create_script_key"
+          : "create_premium_key"
+        : "create_normal_key",
     target: discordUserId || cleanRobloxUser,
-    details: record.key,
+    details: `${record.key} (${scopeLabel(cleanScope)})`,
   });
 
   return { record, created: true };
@@ -110,27 +160,61 @@ function revokeKey({ key, reason, actorId, actorTag }) {
   return statements.findKeyByValue.get(key);
 }
 
-function validateKey({ key, robloxUser }) {
+function validateKey({ key, robloxUser, scope }) {
   runMaintenance();
 
   const cleanKey = normalizeName(key);
   const cleanRobloxUser = normalizeName(robloxUser);
+  const requestedScope = normalizeName(scope)
+    ? normalizeAccessScope(scope, "normal")
+    : null;
 
   if (!cleanKey || !cleanRobloxUser) {
     throw new Error("key and robloxUser are required.");
   }
 
-  const record = statements.findValidKeyForRobloxUser.get(cleanKey, cleanRobloxUser);
+  const record = statements.findKeyByValue.get(cleanKey);
   if (!record) {
-    return {
-      valid: false,
-      reason: "Key is invalid, revoked, expired, or does not belong to this Roblox user.",
-    };
+    return invalid("That key does not exist.", "key_not_found");
+  }
+
+  if (record.status === "revoked") {
+    return invalid("That key has been revoked.", "key_revoked", {
+      record,
+    });
+  }
+
+  if (record.status === "expired" || isExpired(record)) {
+    return invalid("That key has expired.", "key_expired", {
+      record,
+    });
+  }
+
+  if (cleanRobloxUser.toLowerCase() !== String(record.roblox_user || "").trim().toLowerCase()) {
+    return invalid("That key belongs to a different Roblox username.", "roblox_mismatch", {
+      record,
+    });
+  }
+
+  const recordScope = normalizeAccessScope(record.scope, record.type === "premium" ? "premium" : "normal");
+  if (requestedScope && recordScope !== requestedScope) {
+    return invalid(
+      `That key is for ${scopeLabel(recordScope)}, not ${scopeLabel(requestedScope)}.`,
+      "scope_mismatch",
+      {
+        record,
+        requiredScope: recordScope,
+        requestedScope,
+      },
+    );
   }
 
   return {
     valid: true,
-    record,
+    record: {
+      ...record,
+      scope: recordScope,
+    },
   };
 }
 

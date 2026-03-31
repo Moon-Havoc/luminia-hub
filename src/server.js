@@ -4,6 +4,7 @@ const config = require("./config");
 const { statements, runMaintenance } = require("./db");
 const { performDiscordAdminAction } = require("./discord-admin");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist, validateKey } = require("./key-service");
+const { allScopeConfigs, keyTypeForScope, normalizeAccessScope } = require("./access-scopes");
 const {
   authenticateAdmin,
   clearAdminCookie,
@@ -72,11 +73,12 @@ function sanitizeScriptInput(payload) {
   };
 }
 
-function respondWithValidationResult(res, key, robloxUser) {
+function respondWithValidationResult(res, key, robloxUser, scope) {
   try {
     const result = validateKey({
       key: String(key || "").trim(),
       robloxUser: String(robloxUser || "").trim(),
+      scope: String(scope || "").trim(),
     });
 
     if (!result.valid) {
@@ -84,6 +86,9 @@ function respondWithValidationResult(res, key, robloxUser) {
         ok: true,
         valid: false,
         reason: result.reason,
+        reasonCode: result.reasonCode,
+        requiredScope: result.requiredScope || null,
+        requestedScope: result.requestedScope || null,
       });
     }
 
@@ -91,6 +96,7 @@ function respondWithValidationResult(res, key, robloxUser) {
       ok: true,
       valid: true,
       type: result.record.type,
+      scope: result.record.scope,
       status: result.record.status,
       robloxUser: result.record.roblox_user,
       expiresAt: result.record.expires_at,
@@ -136,6 +142,8 @@ function getDashboardPayload() {
       totalKeys: keys.length,
       activeKeys: keys.filter(keyIsActive).length,
       premiumKeys: keys.filter((record) => record.type === "premium").length,
+      scriptKeys: keys.filter((record) => ["bb", "sab", "arsenal"].includes(record.scope)).length,
+      normalKeys: keys.filter((record) => record.type === "normal").length,
       totalUsers: users.length,
       blacklistedUsers: users.filter((record) => record.blacklisted).length,
       activeModeration: moderationActions.filter((record) => record.active).length,
@@ -182,6 +190,7 @@ app.post("/api/keys/generate", (req, res) => {
       created: result.created,
       key: result.record.key,
       type: result.record.type,
+      scope: result.record.scope,
       status: result.record.status,
       createdAt: result.record.created_at,
       expiresAt: result.record.expires_at,
@@ -195,12 +204,17 @@ app.post("/api/keys/generate", (req, res) => {
 });
 
 app.post("/api/keys/validate", (req, res) => {
-  const { key, robloxUser } = req.body || {};
-  return respondWithValidationResult(res, key, robloxUser);
+  const { key, robloxUser, scope, product } = req.body || {};
+  return respondWithValidationResult(res, key, robloxUser, scope || product);
 });
 
 app.get("/api/keys/validate", (req, res) => {
-  return respondWithValidationResult(res, req.query.key, req.query.robloxUser);
+  return respondWithValidationResult(
+    res,
+    req.query.key,
+    req.query.robloxUser,
+    req.query.scope || req.query.product,
+  );
 });
 
 app.get("/api/admin/session", (req, res) => {
@@ -289,14 +303,20 @@ app.post("/api/admin/keys/issue", requireAdminApi, (req, res) => {
     const discordUserId = String(req.body?.discordUserId || "").trim();
     const discordTag = String(req.body?.discordTag || discordUserId).trim();
     const robloxUser = String(req.body?.robloxUser || "").trim();
-    const type = String(req.body?.type || "normal").trim().toLowerCase();
+    const scope = normalizeAccessScope(req.body?.scope || req.body?.type || "normal");
+    const type = keyTypeForScope(scope);
+    const durationMs = parseDurationToken(req.body?.duration);
 
     if (!discordUserId || !robloxUser) {
       throw new Error("discordUserId and robloxUser are required.");
     }
 
     if (!["normal", "premium"].includes(type)) {
-      throw new Error("type must be normal or premium.");
+      throw new Error("Unsupported key scope.");
+    }
+
+    if (scope === "premium" && !durationMs) {
+      throw new Error("Premium access requires a duration like 30m, 12h, or 7d.");
     }
 
     const result = createOrReuseKey({
@@ -304,6 +324,8 @@ app.post("/api/admin/keys/issue", requireAdminApi, (req, res) => {
       discordTag,
       robloxUser,
       type,
+      scope,
+      durationMs,
       actorId: req.adminUser,
       actorTag: adminActorTag(req.adminUser),
     });
@@ -500,6 +522,20 @@ app.get("/api/keys/status", (req, res) => {
   });
 });
 
+app.get("/api/key-options", (req, res) => {
+  return res.json({
+    ok: true,
+    scopes: allScopeConfigs().map((entry) => ({
+      scope: entry.scope,
+      label: entry.label,
+      keyType: entry.keyType,
+      publicPortal: entry.publicPortal,
+      requiresDuration: Boolean(entry.requiresDuration),
+      scriptLocked: Boolean(entry.scriptLocked),
+    })),
+  });
+});
+
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(config.rootDir, "public", "admin.html"));
 });
@@ -524,3 +560,19 @@ function startServer() {
 module.exports = {
   startServer,
 };
+function parseDurationToken(value) {
+  const input = String(value || "").trim().toLowerCase();
+  if (!input) {
+    return null;
+  }
+
+  const match = input.match(/^(\d+)(m|h|d)$/);
+  if (!match) {
+    throw new Error("Duration must look like 30m, 12h, or 7d.");
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multipliers = { m: 60_000, h: 3_600_000, d: 86_400_000 };
+  return amount * multipliers[unit];
+}

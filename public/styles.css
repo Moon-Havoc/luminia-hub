@@ -574,7 +574,9 @@ button:hover {
 }
 
 .prefill-banner.hidden,
-.result-card.hidden {
+.result-card.hidden,
+#normal-access-view.hidden,
+#paid-access-view.hidden {
   display: none;
 }
 
@@ -715,7 +717,7 @@ button:disabled {
 
 .result-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
   margin-top: 0.9rem;
 }
@@ -735,6 +737,7 @@ button:disabled {
 }
 
 .distribution-list,
+.paid-access-grid,
 .rule-grid {
   display: grid;
   gap: 0.9rem;
@@ -742,11 +745,25 @@ button:disabled {
 }
 
 .distribution-list article,
+.paid-access-grid article,
 .rule-grid article {
   padding: 0.85rem;
   border-radius: 1rem;
   background: rgba(8, 12, 19, 0.92);
   border: 1px solid rgba(113, 170, 255, 0.08);
+}
+
+.paid-access-grid code {
+  display: block;
+  margin-top: 0.6rem;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(3, 5, 9, 0.92);
+  color: var(--muted-strong);
+  border: 1px solid rgba(113, 170, 255, 0.06);
+  font-family: "Space Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .distribution-list h3 {

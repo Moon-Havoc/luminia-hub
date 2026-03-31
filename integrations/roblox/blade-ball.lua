@@ -144,7 +144,7 @@ local VerifyBtn = createButton("Verify", UDim2.new(0.55, 0, 0.7, 0))
 
 local SITE_URL = "https://luminia-hub-production.up.railway.app"
 local API_URL = SITE_URL .. "/api/keys/validate"
-local ACCESS_SCOPE = nil -- set to "premium", "bb", "sab", or "arsenal" for scoped paid scripts
+local ACCESS_SCOPE = "bb" -- set to "premium", "bb", "sab", or "arsenal" for scoped paid scripts
 
 local function setStatus(text, color)
     KeyBox.Text = text
