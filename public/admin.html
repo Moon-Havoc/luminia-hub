@@ -83,6 +83,7 @@
           <nav class="admin-card dashboard-switcher" data-reveal>
             <button class="dashboard-tab is-active" type="button" data-dashboard-tab="overview">Overview</button>
             <button class="dashboard-tab" type="button" data-dashboard-tab="operations">Operations</button>
+            <button class="dashboard-tab" type="button" data-dashboard-tab="automod">Auto-Mod</button>
             <button class="dashboard-tab" type="button" data-dashboard-tab="inventory">Inventory</button>
             <button class="dashboard-tab" type="button" data-dashboard-tab="activity">Activity</button>
             <button class="dashboard-tab" type="button" data-dashboard-tab="scripts">Scripts</button>
@@ -383,6 +384,254 @@
                 <div id="user-list" class="data-stack"></div>
               </section>
             </section>
+          </div>
+
+          <div class="dashboard-panel" data-dashboard-panel="automod">
+            <form id="automod-form" class="admin-form">
+              <section class="admin-card control-shell" data-reveal>
+                <div class="library-head">
+                  <div class="panel-heading">
+                    <p class="eyebrow">Auto-Mod</p>
+                    <h2>Shared moderation profile</h2>
+                    <p class="panel-copy">
+                      Configure the same live automod rules from the website and from Discord.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="ops-grid automod-grid">
+                  <section class="quick-panel">
+                    <div class="panel-heading">
+                      <p class="eyebrow">Overview</p>
+                      <h3>Live status</h3>
+                    </div>
+
+                    <div class="metric-grid automod-summary-grid">
+                      <article class="metric-card">
+                        <span class="metric-label">State</span>
+                        <strong id="automod-status-label">Enabled</strong>
+                      </article>
+                      <article class="metric-card">
+                        <span class="metric-label">Enabled rules</span>
+                        <strong id="automod-enabled-rules-label">0</strong>
+                      </article>
+                      <article class="metric-card">
+                        <span class="metric-label">Tracked lists</span>
+                        <strong id="automod-list-summary-label">0</strong>
+                      </article>
+                      <article class="metric-card">
+                        <span class="metric-label">Log channel</span>
+                        <strong id="automod-log-channel-label">Not set</strong>
+                      </article>
+                    </div>
+
+                    <p id="automod-action-summary" class="panel-copy small-copy">
+                      Auto-mod summary will appear here.
+                    </p>
+
+                    <div class="admin-form-actions split-actions">
+                      <button id="automod-preset-balanced" class="ghost-button" type="button">Balanced</button>
+                      <button id="automod-preset-strict" class="ghost-button" type="button">Strict</button>
+                      <button id="automod-preset-relaxed" class="ghost-button" type="button">Relaxed</button>
+                      <button id="automod-preset-off" class="ghost-button" type="button">Off</button>
+                    </div>
+                  </section>
+
+                  <section class="quick-panel">
+                    <div class="panel-heading">
+                      <p class="eyebrow">Actions</p>
+                      <h3>Response settings</h3>
+                    </div>
+
+                    <div class="toggle-grid">
+                      <label class="toggle-field">
+                        <input id="automod-enabled" type="checkbox" />
+                        <span>
+                          <strong>Enable Auto-Mod</strong>
+                          <small>Master switch for every rule.</small>
+                        </span>
+                      </label>
+                      <label class="toggle-field">
+                        <input id="automod-delete-message" type="checkbox" />
+                        <span>
+                          <strong>Delete Triggering Messages</strong>
+                          <small>Remove filtered content when possible.</small>
+                        </span>
+                      </label>
+                      <label class="toggle-field">
+                        <input id="automod-timeout-enabled" type="checkbox" />
+                        <span>
+                          <strong>Apply Timeout</strong>
+                          <small>Use Discord timeouts on violations.</small>
+                        </span>
+                      </label>
+                      <label class="toggle-field">
+                        <input id="automod-send-notice" type="checkbox" />
+                        <span>
+                          <strong>Public Notice</strong>
+                          <small>Post a short warning in the channel.</small>
+                        </span>
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Timeout Minutes</span>
+                        <input id="automod-timeout-minutes" type="number" min="0" max="10080" />
+                      </label>
+                      <label>
+                        <span>Notice Seconds</span>
+                        <input id="automod-notice-seconds" type="number" min="3" max="120" />
+                      </label>
+                    </div>
+
+                    <label>
+                      <span>Log Channel ID</span>
+                      <input id="automod-log-channel-id" placeholder="123456789012345678" />
+                    </label>
+                  </section>
+
+                  <section class="quick-panel">
+                    <div class="panel-heading">
+                      <p class="eyebrow">Rules</p>
+                      <h3>Detection toggles</h3>
+                    </div>
+
+                    <div class="toggle-grid">
+                      <label class="toggle-field"><input id="automod-rule-invites" type="checkbox" /><span><strong>Invite Filter</strong><small>Block non-trusted Discord invites.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-links" type="checkbox" /><span><strong>External Links</strong><small>Allow only whitelisted domains.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-blocked-words" type="checkbox" /><span><strong>Blocked Words</strong><small>Match custom words or phrases.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-attachments" type="checkbox" /><span><strong>Blocked Attachments</strong><small>Filter risky file extensions.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-mass-mentions" type="checkbox" /><span><strong>Mass Mentions</strong><small>Catch ping floods and @everyone spam.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-repeat" type="checkbox" /><span><strong>Repeat Messages</strong><small>Detect duplicate message spam.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-burst" type="checkbox" /><span><strong>Burst Spam</strong><small>Catch rapid-fire message bursts.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-caps" type="checkbox" /><span><strong>Caps Spam</strong><small>Filter excessive uppercase yelling.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-repeated-chars" type="checkbox" /><span><strong>Repeated Characters</strong><small>Catch stretched text spam.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-emoji" type="checkbox" /><span><strong>Emoji Spam</strong><small>Filter emoji walls and floods.</small></span></label>
+                      <label class="toggle-field"><input id="automod-rule-line" type="checkbox" /><span><strong>Line Spam</strong><small>Catch stacked-line message spam.</small></span></label>
+                    </div>
+                  </section>
+
+                  <section class="quick-panel automod-wide-panel">
+                    <div class="panel-heading">
+                      <p class="eyebrow">Thresholds + lists</p>
+                      <h3>Fine-tune rule behavior</h3>
+                      <p class="panel-copy">
+                        Use one value per line for list fields. Role, channel, and user exemptions should use IDs.
+                      </p>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Mass Mention Limit</span>
+                        <input id="automod-limit-mentions" type="number" min="2" max="50" />
+                      </label>
+                      <label>
+                        <span>Repeat Limit</span>
+                        <input id="automod-limit-repeat" type="number" min="2" max="10" />
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Repeat Window (seconds)</span>
+                        <input id="automod-window-repeat" type="number" min="3" max="120" />
+                      </label>
+                      <label>
+                        <span>Burst Limit</span>
+                        <input id="automod-limit-burst" type="number" min="3" max="20" />
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Burst Window (seconds)</span>
+                        <input id="automod-window-burst" type="number" min="3" max="120" />
+                      </label>
+                      <label>
+                        <span>Caps Minimum Length</span>
+                        <input id="automod-caps-min" type="number" min="4" max="200" />
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Caps Ratio</span>
+                        <input id="automod-caps-ratio" type="number" min="0" max="100" step="1" />
+                      </label>
+                      <label>
+                        <span>Repeated Character Limit</span>
+                        <input id="automod-char-limit" type="number" min="4" max="40" />
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Emoji Limit</span>
+                        <input id="automod-emoji-limit" type="number" min="3" max="100" />
+                      </label>
+                      <label>
+                        <span>Line Limit</span>
+                        <input id="automod-line-limit" type="number" min="3" max="50" />
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Allowed Invite Codes</span>
+                        <textarea id="automod-allowed-invites" rows="4" placeholder="vFdWTQ3uKC"></textarea>
+                      </label>
+                      <label>
+                        <span>Allowed Domains</span>
+                        <textarea id="automod-allowed-domains" rows="4" placeholder="luminia-hub-production.up.railway.app"></textarea>
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Blocked Words / Phrases</span>
+                        <textarea id="automod-blocked-words" rows="4" placeholder="scam link"></textarea>
+                      </label>
+                      <label>
+                        <span>Blocked File Extensions</span>
+                        <textarea id="automod-blocked-extensions" rows="4" placeholder="exe"></textarea>
+                      </label>
+                    </div>
+
+                    <div class="field-grid">
+                      <label>
+                        <span>Exempt Role IDs</span>
+                        <textarea id="automod-exempt-roles" rows="4" placeholder="123456789012345678"></textarea>
+                      </label>
+                      <label>
+                        <span>Exempt Channel IDs</span>
+                        <textarea id="automod-exempt-channels" rows="4" placeholder="123456789012345678"></textarea>
+                      </label>
+                    </div>
+
+                    <label>
+                      <span>Exempt User IDs</span>
+                      <textarea id="automod-exempt-users" rows="4" placeholder="123456789012345678"></textarea>
+                    </label>
+                  </section>
+                </div>
+              </section>
+
+              <section class="admin-card helper-card" data-reveal>
+                <div class="panel-heading">
+                  <p class="eyebrow">Save changes</p>
+                  <h2>Push live automod updates</h2>
+                  <p class="panel-copy">These settings take effect immediately for the Discord bot and the admin panel.</p>
+                </div>
+
+                <div class="admin-form-actions split-actions">
+                  <button id="automod-save-button" type="submit">Save Auto-Mod</button>
+                  <button id="automod-reset-button" class="ghost-button" type="button">Reset Form</button>
+                </div>
+
+                <div id="automod-feedback" class="admin-feedback hidden"></div>
+              </section>
+            </form>
           </div>
 
           <div class="dashboard-panel" data-dashboard-panel="activity">

@@ -9,16 +9,17 @@ const config = require("./config");
 const { statements } = require("./db");
 const { setBotClient } = require("./discord-admin");
 const { isScriptScope, keyTypeForScope, normalizeAccessScope, scopeLabel } = require("./access-scopes");
+const {
+  applyAutoModPreset,
+  autoModRuleLabel,
+  evaluateAutoModMessage,
+  getAutoModConfig,
+  listEnabledRules,
+  updateAutoModList,
+  updateAutoModValue,
+} = require("./automod");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist } = require("./key-service");
 const { isBotAdmin } = require("./permissions");
-
-const AUTO_MOD_REPEAT_WINDOW_MS = 12_000;
-const AUTO_MOD_REPEAT_THRESHOLD = 3;
-const AUTO_MOD_MENTION_LIMIT = 5;
-const AUTO_MOD_TIMEOUT_MS = 10 * 60_000;
-const INVITE_PATTERN = /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord(?:app)?\.com\/invite)\/([a-z0-9-]+)/i;
-const TRUSTED_INVITE_CODES = new Set(["vFdWTQ3uKC".toLowerCase()]);
-const recentMessages = new Map();
 
 function parseDuration(value) {
   const input = String(value || "").trim().toLowerCase();
@@ -64,6 +65,11 @@ const COMMAND_DESCRIPTIONS = [
   "`!unban {userId}` - unban a user by ID",
   "`!commands` - show this list",
   "`!check-perms` - check the bot's Discord permissions in this server",
+  "`!automod status` - show current automod state, actions, and live rules",
+  "`!automod toggle {setting} {on|off}` - enable or disable a rule or action",
+  "`!automod set {setting} {value}` - change thresholds, timeout, or log channel",
+  "`!automod add/remove/list {category}` - manage allowlists, blocklists, and exemptions",
+  "`!automod preset {balanced|strict|relaxed|off}` - apply a full automod preset",
 ];
 
 const PERMISSION_LABELS = {
@@ -94,71 +100,133 @@ function accessLabelForRecord(record) {
   return scopeLabel(record.scope || (record.type === "premium" ? "premium" : "normal"));
 }
 
-function normalizeMessageContent(content) {
-  return String(content || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
+const AUTOMOD_TOGGLE_PATHS = {
+  enabled: { path: "enabled", label: "Auto-Mod" },
+  delete: { path: "actions.deleteMessage", label: "Delete Message" },
+  timeout: { path: "actions.timeoutEnabled", label: "Timeout Action" },
+  notice: { path: "actions.sendPublicNotice", label: "Public Notice" },
+  invites: { path: "rules.invites.enabled", label: autoModRuleLabel("invites") },
+  links: { path: "rules.links.enabled", label: autoModRuleLabel("links") },
+  words: { path: "rules.blockedWords.enabled", label: autoModRuleLabel("blockedWords") },
+  blockedwords: { path: "rules.blockedWords.enabled", label: autoModRuleLabel("blockedWords") },
+  mentions: { path: "rules.massMentions.enabled", label: autoModRuleLabel("massMentions") },
+  repeat: { path: "rules.repeatMessages.enabled", label: autoModRuleLabel("repeatMessages") },
+  burst: { path: "rules.burstSpam.enabled", label: autoModRuleLabel("burstSpam") },
+  caps: { path: "rules.caps.enabled", label: autoModRuleLabel("caps") },
+  chars: { path: "rules.repeatedChars.enabled", label: autoModRuleLabel("repeatedChars") },
+  repeatedchars: { path: "rules.repeatedChars.enabled", label: autoModRuleLabel("repeatedChars") },
+  emoji: { path: "rules.emojiSpam.enabled", label: autoModRuleLabel("emojiSpam") },
+  lines: { path: "rules.lineSpam.enabled", label: autoModRuleLabel("lineSpam") },
+  attachments: { path: "rules.attachments.enabled", label: autoModRuleLabel("attachments") },
+};
 
-function recordRepeatMessage(message) {
-  const now = Date.now();
-  const authorId = message.author.id;
-  const normalized = normalizeMessageContent(message.content);
-  const history = (recentMessages.get(authorId) || []).filter((entry) => now - entry.timestamp <= AUTO_MOD_REPEAT_WINDOW_MS);
-  history.push({
-    content: normalized,
-    timestamp: now,
-  });
-  recentMessages.set(authorId, history);
-  return history.filter((entry) => entry.content === normalized).length;
-}
+const AUTOMOD_SET_PATHS = {
+  timeout: { path: "actions.timeoutMinutes", label: "Timeout Minutes", type: "int", min: 0, max: 10_080 },
+  "notice-seconds": { path: "actions.noticeSeconds", label: "Notice Seconds", type: "int", min: 3, max: 120 },
+  noticeseconds: { path: "actions.noticeSeconds", label: "Notice Seconds", type: "int", min: 3, max: 120 },
+  "log-channel": { path: "actions.logChannelId", label: "Log Channel", type: "channel" },
+  logchannel: { path: "actions.logChannelId", label: "Log Channel", type: "channel" },
+  mentions: { path: "rules.massMentions.limit", label: "Mass Mention Limit", type: "int", min: 2, max: 50 },
+  "repeat-limit": { path: "rules.repeatMessages.limit", label: "Repeat Limit", type: "int", min: 2, max: 10 },
+  repeatlimit: { path: "rules.repeatMessages.limit", label: "Repeat Limit", type: "int", min: 2, max: 10 },
+  "repeat-window": { path: "rules.repeatMessages.windowSeconds", label: "Repeat Window (seconds)", type: "int", min: 3, max: 120 },
+  repeatwindow: { path: "rules.repeatMessages.windowSeconds", label: "Repeat Window (seconds)", type: "int", min: 3, max: 120 },
+  "burst-limit": { path: "rules.burstSpam.limit", label: "Burst Limit", type: "int", min: 3, max: 20 },
+  burstlimit: { path: "rules.burstSpam.limit", label: "Burst Limit", type: "int", min: 3, max: 20 },
+  "burst-window": { path: "rules.burstSpam.windowSeconds", label: "Burst Window (seconds)", type: "int", min: 3, max: 120 },
+  burstwindow: { path: "rules.burstSpam.windowSeconds", label: "Burst Window (seconds)", type: "int", min: 3, max: 120 },
+  "caps-min": { path: "rules.caps.minLength", label: "Caps Minimum Length", type: "int", min: 4, max: 200 },
+  capsmin: { path: "rules.caps.minLength", label: "Caps Minimum Length", type: "int", min: 4, max: 200 },
+  "caps-ratio": { path: "rules.caps.ratio", label: "Caps Ratio", type: "ratio" },
+  capsratio: { path: "rules.caps.ratio", label: "Caps Ratio", type: "ratio" },
+  "char-limit": { path: "rules.repeatedChars.limit", label: "Repeated Character Limit", type: "int", min: 4, max: 40 },
+  charlimit: { path: "rules.repeatedChars.limit", label: "Repeated Character Limit", type: "int", min: 4, max: 40 },
+  "emoji-limit": { path: "rules.emojiSpam.limit", label: "Emoji Limit", type: "int", min: 3, max: 100 },
+  emojilimit: { path: "rules.emojiSpam.limit", label: "Emoji Limit", type: "int", min: 3, max: 100 },
+  "line-limit": { path: "rules.lineSpam.limit", label: "Line Limit", type: "int", min: 3, max: 50 },
+  linelimit: { path: "rules.lineSpam.limit", label: "Line Limit", type: "int", min: 3, max: 50 },
+};
 
-function autoModReason(message) {
-  const normalized = normalizeMessageContent(message.content);
-  if (!normalized) {
-    return null;
+const AUTOMOD_LIST_PATHS = {
+  invite: "allowedInviteCodes",
+  invites: "allowedInviteCodes",
+  domain: "allowedDomains",
+  domains: "allowedDomains",
+  word: "blockedWords",
+  words: "blockedWords",
+  extension: "blockedExtensions",
+  extensions: "blockedExtensions",
+  role: "exemptRoleIds",
+  roles: "exemptRoleIds",
+  channel: "exemptChannelIds",
+  channels: "exemptChannelIds",
+  user: "exemptUserIds",
+  users: "exemptUserIds",
+};
+
+const AUTOMOD_LIST_LABELS = {
+  allowedInviteCodes: "Allowed Invite Codes",
+  allowedDomains: "Allowed Domains",
+  blockedWords: "Blocked Words",
+  blockedExtensions: "Blocked Extensions",
+  exemptRoleIds: "Exempt Roles",
+  exemptChannelIds: "Exempt Channels",
+  exemptUserIds: "Exempt Users",
+};
+
+function parseAutoModToggleValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["on", "true", "enable", "enabled", "yes", "1"].includes(normalized)) {
+    return true;
   }
-
-  const inviteMatch = normalized.match(INVITE_PATTERN);
-  if (inviteMatch) {
-    const inviteCode = String(inviteMatch[1] || "").toLowerCase();
-    if (!TRUSTED_INVITE_CODES.has(inviteCode)) {
-      return {
-        code: "invite_link",
-        description: "External Discord invite links are not allowed here.",
-        deleteMessage: true,
-        timeoutMs: AUTO_MOD_TIMEOUT_MS,
-      };
-    }
+  if (["off", "false", "disable", "disabled", "no", "0"].includes(normalized)) {
+    return false;
   }
-
-  const mentionCount =
-    message.mentions.users.size +
-    message.mentions.roles.size +
-    (message.mentions.everyone ? AUTO_MOD_MENTION_LIMIT : 0);
-  if (mentionCount >= AUTO_MOD_MENTION_LIMIT) {
-    return {
-      code: "mass_mentions",
-      description: "Mass mentions triggered automod.",
-      deleteMessage: true,
-      timeoutMs: AUTO_MOD_TIMEOUT_MS,
-    };
-  }
-
-  if (normalized.length >= 6) {
-    const repeats = recordRepeatMessage(message);
-    if (repeats >= AUTO_MOD_REPEAT_THRESHOLD) {
-      return {
-        code: "repeat_spam",
-        description: "Repeated message spam triggered automod.",
-        deleteMessage: true,
-        timeoutMs: 5 * 60_000,
-      };
-    }
-  }
-
   return null;
+}
+
+function normalizeAutoModInviteCode(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?(?:discord\.gg|discord(?:app)?\.com\/invite)\//, "")
+    .replace(/[^a-z0-9-].*$/i, "");
+}
+
+function normalizeAutoModDomain(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "");
+}
+
+function parseUserIdLike(raw) {
+  const value = String(raw || "").trim();
+  const mentionMatch = value.match(/^<@!?(\d+)>$/);
+  if (mentionMatch) {
+    return mentionMatch[1];
+  }
+  return /^\d+$/.test(value) ? value : null;
+}
+
+function parseRoleIdLike(raw) {
+  const value = String(raw || "").trim();
+  const mentionMatch = value.match(/^<@&(\d+)>$/);
+  if (mentionMatch) {
+    return mentionMatch[1];
+  }
+  return /^\d+$/.test(value) ? value : null;
+}
+
+function parseChannelIdLike(raw) {
+  const value = String(raw || "").trim();
+  const mentionMatch = value.match(/^<#(\d+)>$/);
+  if (mentionMatch) {
+    return mentionMatch[1];
+  }
+  return /^\d+$/.test(value) ? value : null;
 }
 
 async function resolveMember(message, raw) {
@@ -182,6 +250,38 @@ async function resolveMember(message, raw) {
   });
 
   return cached || null;
+}
+
+function resolveRoleId(guild, raw) {
+  const directId = parseRoleIdLike(raw);
+  if (directId && guild.roles.cache.has(directId)) {
+    return directId;
+  }
+
+  const lowered = String(raw || "").trim().toLowerCase();
+  const role = guild.roles.cache.find((entry) => entry.name.toLowerCase() === lowered);
+  return role?.id || null;
+}
+
+function resolveChannelId(guild, raw) {
+  const directId = parseChannelIdLike(raw);
+  if (directId && guild.channels.cache.has(directId)) {
+    return directId;
+  }
+
+  const lowered = String(raw || "").trim().toLowerCase().replace(/^#/, "");
+  const channel = guild.channels.cache.find((entry) => entry.name?.toLowerCase() === lowered);
+  return channel?.id || null;
+}
+
+async function resolveUserId(message, raw) {
+  const directId = parseUserIdLike(raw);
+  if (directId) {
+    return directId;
+  }
+
+  const member = await resolveMember(message, raw);
+  return member?.id || null;
 }
 
 async function getBotMember(message) {
@@ -431,6 +531,374 @@ async function handleCheckPerms(message) {
   });
 }
 
+function formatAutoModThresholdSummary(config) {
+  return [
+    `Mentions: ${config.rules.massMentions.limit}`,
+    `Repeat: ${config.rules.repeatMessages.limit} in ${config.rules.repeatMessages.windowSeconds}s`,
+    `Burst: ${config.rules.burstSpam.limit} in ${config.rules.burstSpam.windowSeconds}s`,
+    `Caps: ${Math.round(config.rules.caps.ratio * 100)}% after ${config.rules.caps.minLength} letters`,
+    `Chars: ${config.rules.repeatedChars.limit}+`,
+    `Emoji: ${config.rules.emojiSpam.limit}`,
+    `Lines: ${config.rules.lineSpam.limit}`,
+  ].join("\n");
+}
+
+function formatAutoModListValue(path, value) {
+  switch (path) {
+    case "exemptRoleIds":
+      return `<@&${value}>`;
+    case "exemptChannelIds":
+      return `<#${value}>`;
+    case "exemptUserIds":
+      return `<@${value}>`;
+    default:
+      return `\`${value}\``;
+  }
+}
+
+function getAutoModListValues(config, path) {
+  return Array.isArray(config[path]) ? config[path] : [];
+}
+
+async function sendAutoModStatus(message, title = "Auto-Mod Status") {
+  const config = getAutoModConfig();
+  const enabledRules = listEnabledRules(config);
+
+  await replyEmbed(message, {
+    color: config.enabled ? "info" : "warning",
+    title,
+    description: config.enabled
+      ? "Shared automod is active. Discord commands and the admin panel are editing the same profile."
+      : "Auto-mod is currently disabled server-wide.",
+    fields: [
+      {
+        name: "Actions",
+        value: [
+          `Delete: ${config.actions.deleteMessage ? "On" : "Off"}`,
+          `Timeout: ${config.actions.timeoutEnabled ? `On (${config.actions.timeoutMinutes}m)` : "Off"}`,
+          `Public notice: ${config.actions.sendPublicNotice ? `On (${config.actions.noticeSeconds}s)` : "Off"}`,
+          `Log channel: ${config.actions.logChannelId ? `<#${config.actions.logChannelId}>` : "Not set"}`,
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name: "Enabled Rules",
+        value: enabledRules.length ? enabledRules.map(autoModRuleLabel).join(", ") : "None",
+        inline: false,
+      },
+      {
+        name: "Thresholds",
+        value: formatAutoModThresholdSummary(config),
+        inline: false,
+      },
+      {
+        name: "Lists",
+        value: [
+          `Allowed invites: ${config.allowedInviteCodes.length}`,
+          `Allowed domains: ${config.allowedDomains.length}`,
+          `Blocked words: ${config.blockedWords.length}`,
+          `Blocked extensions: ${config.blockedExtensions.length}`,
+          `Exempt roles: ${config.exemptRoleIds.length}`,
+          `Exempt channels: ${config.exemptChannelIds.length}`,
+          `Exempt users: ${config.exemptUserIds.length}`,
+        ].join("\n"),
+        inline: false,
+      },
+    ],
+  });
+}
+
+function parseAutoModInteger(raw, minimum, maximum, label) {
+  const parsed = Number.parseInt(String(raw || "").trim(), 10);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a number.`);
+  }
+  if (parsed < minimum || parsed > maximum) {
+    throw new Error(`${label} must be between ${minimum} and ${maximum}.`);
+  }
+  return parsed;
+}
+
+function parseAutoModRatio(raw) {
+  const parsed = Number.parseFloat(String(raw || "").trim());
+  if (!Number.isFinite(parsed)) {
+    throw new Error("Caps ratio must be a number like 0.75 or 75.");
+  }
+
+  if (parsed > 1) {
+    if (parsed > 100) {
+      throw new Error("Caps ratio must be between 0 and 100.");
+    }
+    return parsed / 100;
+  }
+
+  if (parsed < 0 || parsed > 1) {
+    throw new Error("Caps ratio must be between 0 and 1.");
+  }
+
+  return parsed;
+}
+
+async function resolveAutoModSetValue(message, setting, rawValue) {
+  if (setting.type === "int") {
+    return parseAutoModInteger(rawValue, setting.min, setting.max, setting.label);
+  }
+
+  if (setting.type === "ratio") {
+    return parseAutoModRatio(rawValue);
+  }
+
+  if (setting.type === "channel") {
+    const clean = String(rawValue || "").trim();
+    if (!clean || ["none", "clear", "off"].includes(clean.toLowerCase())) {
+      return "";
+    }
+
+    const channelId = resolveChannelId(message.guild, clean);
+    if (!channelId) {
+      throw new Error("I couldn't resolve that channel. Use a channel mention, ID, or exact name.");
+    }
+
+    return channelId;
+  }
+
+  return String(rawValue || "").trim();
+}
+
+async function resolveAutoModListValue(message, path, rawArgs) {
+  const joined = rawArgs.join(" ").trim();
+  if (!joined) {
+    throw new Error("That list command needs a value.");
+  }
+
+  switch (path) {
+    case "allowedInviteCodes": {
+      const code = normalizeAutoModInviteCode(joined);
+      if (!code) {
+        throw new Error("Give me an invite code or Discord invite URL.");
+      }
+      return code;
+    }
+    case "allowedDomains": {
+      const domain = normalizeAutoModDomain(joined);
+      if (!domain || !domain.includes(".")) {
+        throw new Error("Give me a domain like example.com.");
+      }
+      return domain;
+    }
+    case "blockedWords":
+      return joined.toLowerCase();
+    case "blockedExtensions":
+      return joined.toLowerCase().replace(/^\./, "");
+    case "exemptRoleIds": {
+      const roleId = resolveRoleId(message.guild, joined);
+      if (!roleId) {
+        throw new Error("I couldn't resolve that role. Use a role mention, ID, or exact name.");
+      }
+      return roleId;
+    }
+    case "exemptChannelIds": {
+      const channelId = resolveChannelId(message.guild, joined);
+      if (!channelId) {
+        throw new Error("I couldn't resolve that channel. Use a channel mention, ID, or exact name.");
+      }
+      return channelId;
+    }
+    case "exemptUserIds": {
+      const userId = await resolveUserId(message, joined);
+      if (!userId) {
+        throw new Error("I couldn't resolve that user. Use a mention, ID, or exact username.");
+      }
+      return userId;
+    }
+    default:
+      return joined;
+  }
+}
+
+function formatAutoModSettingResult(setting, value) {
+  if (setting.type === "ratio") {
+    return `${Math.round(value * 100)}%`;
+  }
+  if (setting.type === "channel") {
+    return value ? `<#${value}>` : "Cleared";
+  }
+  return String(value);
+}
+
+async function handleAutoModCommand(message, args) {
+  if (!(await ensureAdmin(message))) {
+    return;
+  }
+
+  const subcommand = String(args.shift() || "status").trim().toLowerCase();
+
+  if (["status", "show"].includes(subcommand)) {
+    await sendAutoModStatus(message);
+    return;
+  }
+
+  if (["help", "?"].includes(subcommand)) {
+    await replyEmbed(message, {
+      color: "info",
+      title: "Auto-Mod Command Guide",
+      description: [
+        `\`${config.commandPrefix}automod status\``,
+        `\`${config.commandPrefix}automod toggle links on\``,
+        `\`${config.commandPrefix}automod set timeout 15\``,
+        `\`${config.commandPrefix}automod set log-channel #mod-logs\``,
+        `\`${config.commandPrefix}automod add domain example.com\``,
+        `\`${config.commandPrefix}automod add word scam link\``,
+        `\`${config.commandPrefix}automod exempt role @Trusted\``,
+        `\`${config.commandPrefix}automod list domains\``,
+        `\`${config.commandPrefix}automod preset strict\``,
+      ].join("\n"),
+    });
+    return;
+  }
+
+  if (subcommand === "toggle") {
+    const key = String(args[0] || "").trim().toLowerCase().replace(/[^a-z-]/g, "");
+    const value = parseAutoModToggleValue(args[1]);
+    const target = AUTOMOD_TOGGLE_PATHS[key];
+    if (!target || value === null) {
+      await replyUsage(message, `${config.commandPrefix}automod toggle {setting} {on|off}`);
+      return;
+    }
+
+    updateAutoModValue(target.path, value, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Auto-Mod Updated",
+      description: `${target.label} is now **${value ? "enabled" : "disabled"}**.`,
+    });
+    return;
+  }
+
+  if (subcommand === "set") {
+    const key = String(args[0] || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    const target = AUTOMOD_SET_PATHS[key];
+    const rawValue = args.slice(1).join(" ").trim();
+    if (!target || !rawValue) {
+      await replyUsage(message, `${config.commandPrefix}automod set {setting} {value}`);
+      return;
+    }
+
+    const value = await resolveAutoModSetValue(message, target, rawValue);
+    updateAutoModValue(target.path, value, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Auto-Mod Updated",
+      description: `${target.label} set to **${formatAutoModSettingResult(target, value)}**.`,
+    });
+    return;
+  }
+
+  if (["add", "remove", "allow", "block", "exempt", "unallow", "unblock", "unexempt"].includes(subcommand)) {
+    const operation = ["remove", "unallow", "unblock", "unexempt"].includes(subcommand) ? "remove" : "add";
+    const category = String(args.shift() || "").trim().toLowerCase();
+    const path = AUTOMOD_LIST_PATHS[category];
+    if (!path) {
+      await replyUsage(message, `${config.commandPrefix}automod ${subcommand} {category} {value}`);
+      return;
+    }
+
+    const value = await resolveAutoModListValue(message, path, args);
+    const autoModConfig = updateAutoModList(
+      path,
+      operation,
+      value,
+      {
+        actorId: message.author.id,
+        actorTag: message.author.tag,
+      },
+    );
+
+    await replyEmbed(message, {
+      color: "success",
+      title: "Auto-Mod List Updated",
+      description: `${AUTOMOD_LIST_LABELS[path]} ${operation === "remove" ? "removed" : "updated"}.`,
+      fields: [
+        {
+          name: "Value",
+          value: formatAutoModListValue(path, value),
+          inline: false,
+        },
+        {
+          name: "Current Count",
+          value: String(getAutoModListValues(autoModConfig, path).length),
+          inline: true,
+        },
+      ],
+    });
+    return;
+  }
+
+  if (subcommand === "list") {
+    const category = String(args[0] || "").trim().toLowerCase();
+    const path = AUTOMOD_LIST_PATHS[category];
+    if (!path) {
+      await replyUsage(message, `${config.commandPrefix}automod list {category}`);
+      return;
+    }
+
+    const currentConfig = getAutoModConfig();
+    const values = getAutoModListValues(currentConfig, path);
+    await replyEmbed(message, {
+      color: "info",
+      title: AUTOMOD_LIST_LABELS[path],
+      description: values.length
+        ? values.slice(0, 20).map((value) => `• ${formatAutoModListValue(path, value)}`).join("\n")
+        : "No values are stored there yet.",
+      fields:
+        values.length > 20
+          ? [
+              {
+                name: "Trimmed",
+                value: `${values.length - 20} additional values not shown.`,
+                inline: false,
+              },
+            ]
+          : [],
+    });
+    return;
+  }
+
+  if (subcommand === "preset") {
+    const preset = String(args[0] || "").trim().toLowerCase();
+    if (!preset || !["balanced", "strict", "relaxed", "off", "default", "disabled"].includes(preset)) {
+      await replyUsage(message, `${config.commandPrefix}automod preset {balanced|strict|relaxed|off}`);
+      return;
+    }
+
+    applyAutoModPreset(preset, {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+    await sendAutoModStatus(message, `Auto-Mod Preset Applied: ${preset}`);
+    return;
+  }
+
+  if (subcommand === "reset") {
+    applyAutoModPreset("balanced", {
+      actorId: message.author.id,
+      actorTag: message.author.tag,
+    });
+    await sendAutoModStatus(message, "Auto-Mod Reset To Balanced");
+    return;
+  }
+
+  await replyUsage(message, `${config.commandPrefix}automod {status|toggle|set|add|remove|list|preset|reset}`);
+}
+
 async function ensureAdmin(message) {
   if (!isBotAdmin(message.member)) {
     await replyEmbed(message, {
@@ -448,39 +916,101 @@ async function handleAutoMod(message) {
     return false;
   }
 
-  const violation = autoModReason(message);
+  const violation = evaluateAutoModMessage(message);
   if (!violation) {
     return false;
   }
 
+  const autoModConfig = violation.config || getAutoModConfig();
   const botMember = await getBotMember(message).catch(() => null);
   const canDelete =
     Boolean(botMember) &&
+    autoModConfig.actions.deleteMessage &&
     message.deletable &&
     message.channel?.permissionsFor(botMember)?.has(PermissionFlagsBits.ManageMessages);
+  const timeoutMs = autoModConfig.actions.timeoutEnabled
+    ? autoModConfig.actions.timeoutMinutes * 60_000
+    : 0;
   const canTimeout =
     Boolean(botMember) &&
-    violation.timeoutMs &&
+    timeoutMs > 0 &&
     botMember.permissions.has(PermissionFlagsBits.ModerateMembers) &&
     message.member.moderatable;
 
-  if (canDelete && violation.deleteMessage) {
+  if (canDelete) {
     await message.delete().catch(() => {});
   }
 
   if (canTimeout) {
-    await message.member.timeout(violation.timeoutMs, `Automod: ${violation.code}`).catch(() => {});
+    await message.member.timeout(timeoutMs, `Automod: ${violation.code}`).catch(() => {});
     statements.createModerationAction.run({
       action_type: "automod",
       discord_user_id: message.author.id,
       discord_tag: message.author.tag,
-      reason: violation.description,
-      duration_minutes: Math.round(violation.timeoutMs / 60000),
+      reason: `${violation.ruleLabel}: ${violation.description}`,
+      duration_minutes: Math.round(timeoutMs / 60000),
       role_id: null,
       role_name: null,
       active: 1,
-      expires_at: new Date(Date.now() + violation.timeoutMs).toISOString(),
+      expires_at: new Date(Date.now() + timeoutMs).toISOString(),
     });
+  } else {
+    statements.createModerationAction.run({
+      action_type: "automod",
+      discord_user_id: message.author.id,
+      discord_tag: message.author.tag,
+      reason: `${violation.ruleLabel}: ${violation.description}`,
+      duration_minutes: null,
+      role_id: null,
+      role_name: null,
+      active: 0,
+      expires_at: null,
+    });
+  }
+
+  const actionSummary = canDelete
+    ? canTimeout
+      ? `Message removed and timed out for ${autoModConfig.actions.timeoutMinutes} minutes.`
+      : "Message removed."
+    : canTimeout
+      ? `Timed out for ${autoModConfig.actions.timeoutMinutes} minutes.`
+      : "Event logged.";
+
+  const logEmbed = createEmbed({
+    color: "warning",
+    title: `Auto-Mod • ${violation.ruleLabel}`,
+    description: `**${message.author.tag}** triggered auto-mod in <#${message.channel.id}>.`,
+    fields: [
+      {
+        name: "Reason",
+        value: violation.description,
+        inline: false,
+      },
+      {
+        name: "Evidence",
+        value: violation.evidence ? `\`${String(violation.evidence).slice(0, 200)}\`` : "No extra evidence",
+        inline: false,
+      },
+      {
+        name: "Action",
+        value: actionSummary,
+        inline: false,
+      },
+    ],
+  });
+
+  if (autoModConfig.actions.logChannelId) {
+    const logChannel =
+      message.guild.channels.cache.get(autoModConfig.actions.logChannelId) ||
+      (await message.guild.channels.fetch(autoModConfig.actions.logChannelId).catch(() => null));
+
+    if (logChannel?.isTextBased()) {
+      await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+    }
+  }
+
+  if (!autoModConfig.actions.sendPublicNotice) {
+    return true;
   }
 
   const warning = await message.channel
@@ -489,7 +1019,7 @@ async function handleAutoMod(message) {
         createEmbed({
           color: "warning",
           title: "Auto-Mod Triggered",
-          description: `A message from **${message.author.tag}** was filtered.`,
+          description: `A message from **${message.author.tag}** was filtered by **${violation.ruleLabel}**.`,
           fields: [
             {
               name: "Reason",
@@ -498,13 +1028,7 @@ async function handleAutoMod(message) {
             },
             {
               name: "Action",
-              value: canDelete
-                ? canTimeout
-                  ? "Message removed and user timed out."
-                  : "Message removed."
-                : canTimeout
-                  ? "User timed out."
-                  : "Automod logged the event.",
+              value: actionSummary,
               inline: false,
             },
           ],
@@ -516,7 +1040,7 @@ async function handleAutoMod(message) {
   if (warning) {
     setTimeout(() => {
       warning.delete().catch(() => {});
-    }, 15_000);
+    }, Math.max(3, autoModConfig.actions.noticeSeconds) * 1000);
   }
 
   return true;
@@ -1205,6 +1729,9 @@ function createBot() {
           break;
         case "check-perms":
           await handleCheckPerms(message);
+          break;
+        case "automod":
+          await handleAutoModCommand(message, args);
           break;
         case "prem-gen":
           await handleGenerate(message, args, "premium");

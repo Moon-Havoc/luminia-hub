@@ -394,6 +394,10 @@ h3 {
   background: rgba(8, 13, 22, 0.72);
 }
 
+.automod-wide-panel {
+  grid-column: 1 / -1;
+}
+
 .admin-side-column {
   display: grid;
   gap: 1rem;
@@ -429,7 +433,7 @@ button {
   font: inherit;
 }
 
-input,
+input:not([type="checkbox"]),
 select,
 textarea {
   width: 100%;
@@ -446,7 +450,7 @@ textarea {
   min-height: 11rem;
 }
 
-input:focus,
+input:not([type="checkbox"]):focus,
 select:focus,
 textarea:focus {
   border-color: rgba(127, 197, 255, 0.44);
@@ -455,6 +459,45 @@ textarea:focus {
 
 select {
   appearance: none;
+}
+
+input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  accent-color: var(--accent-bright);
+}
+
+.toggle-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.toggle-field {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(108, 166, 255, 0.1);
+  background: rgba(5, 10, 18, 0.72);
+}
+
+.toggle-field strong,
+.toggle-field small {
+  display: block;
+}
+
+.toggle-field small {
+  margin-top: 0.22rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.small-copy {
+  font-size: 0.86rem;
 }
 
 .compact-form {

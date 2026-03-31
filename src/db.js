@@ -61,6 +61,12 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS scripts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -297,6 +303,16 @@ const statements = {
   insertAuditLog: db.prepare(`
     INSERT INTO audit_logs (actor_id, actor_tag, action, target, details)
     VALUES (?, ?, ?, ?, ?)
+  `),
+  getSystemSetting: db.prepare(`
+    SELECT * FROM system_settings WHERE key = ?
+  `),
+  upsertSystemSetting: db.prepare(`
+    INSERT INTO system_settings (key, value, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = CURRENT_TIMESTAMP
   `),
 };
 

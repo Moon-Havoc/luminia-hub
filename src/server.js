@@ -5,6 +5,7 @@ const { statements, runMaintenance } = require("./db");
 const { performDiscordAdminAction } = require("./discord-admin");
 const { createOrReuseKey, revokeKey, resetHwid, setBlacklist, validateKey } = require("./key-service");
 const { allScopeConfigs, keyTypeForScope, normalizeAccessScope } = require("./access-scopes");
+const { applyAutoModPreset, getAutoModConfig, listEnabledRules, saveAutoModConfig } = require("./automod");
 const {
   authenticateAdmin,
   clearAdminCookie,
@@ -135,6 +136,7 @@ function getDashboardPayload() {
   const users = statements.listUsers.all();
   const auditLogs = statements.listAuditLogs.all();
   const moderationActions = statements.listModerationActions.all();
+  const autoMod = getAutoModConfig();
 
   return {
     overview: {
@@ -148,12 +150,14 @@ function getDashboardPayload() {
       blacklistedUsers: users.filter((record) => record.blacklisted).length,
       activeModeration: moderationActions.filter((record) => record.active).length,
       recentAuditEvents: auditLogs.length,
+      autoModEnabledRules: listEnabledRules(autoMod).length,
     },
     scripts,
     keys,
     users,
     auditLogs,
     moderationActions,
+    autoMod,
   };
 }
 
@@ -268,6 +272,13 @@ app.get("/api/admin/dashboard", requireAdminApi, (req, res) => {
   return res.json({
     ok: true,
     ...getDashboardPayload(),
+  });
+});
+
+app.get("/api/admin/automod", requireAdminApi, (req, res) => {
+  return res.json({
+    ok: true,
+    config: getAutoModConfig(),
   });
 });
 
@@ -481,6 +492,56 @@ app.post("/api/admin/discord/action", requireAdminApi, async (req, res) => {
     return res.json({
       ok: true,
       result,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/automod", requireAdminApi, (req, res) => {
+  try {
+    const updates = req.body?.config || req.body || {};
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      throw new Error("Auto-mod config payload must be an object.");
+    }
+
+    const config = saveAutoModConfig(updates, {
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      config,
+      dashboard: getDashboardPayload(),
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/automod/preset", requireAdminApi, (req, res) => {
+  try {
+    const preset = String(req.body?.preset || "").trim().toLowerCase();
+    if (!preset || !["balanced", "strict", "relaxed", "off", "default", "disabled"].includes(preset)) {
+      throw new Error("Preset must be balanced, strict, relaxed, or off.");
+    }
+
+    const config = applyAutoModPreset(preset, {
+      actorId: req.adminUser,
+      actorTag: adminActorTag(req.adminUser),
+    });
+
+    return res.json({
+      ok: true,
+      config,
       dashboard: getDashboardPayload(),
     });
   } catch (error) {

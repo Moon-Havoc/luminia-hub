@@ -18,6 +18,55 @@ const dashboardRefreshButton = document.getElementById("dashboard-refresh-button
 const dashboardTabs = Array.from(document.querySelectorAll("[data-dashboard-tab]"));
 const dashboardPanels = Array.from(document.querySelectorAll("[data-dashboard-panel]"));
 
+const automodForm = document.getElementById("automod-form");
+const automodEnabled = document.getElementById("automod-enabled");
+const automodDeleteMessage = document.getElementById("automod-delete-message");
+const automodTimeoutEnabled = document.getElementById("automod-timeout-enabled");
+const automodSendNotice = document.getElementById("automod-send-notice");
+const automodTimeoutMinutes = document.getElementById("automod-timeout-minutes");
+const automodNoticeSeconds = document.getElementById("automod-notice-seconds");
+const automodLogChannelId = document.getElementById("automod-log-channel-id");
+const automodRuleInvites = document.getElementById("automod-rule-invites");
+const automodRuleLinks = document.getElementById("automod-rule-links");
+const automodRuleBlockedWords = document.getElementById("automod-rule-blocked-words");
+const automodRuleAttachments = document.getElementById("automod-rule-attachments");
+const automodRuleMassMentions = document.getElementById("automod-rule-mass-mentions");
+const automodRuleRepeat = document.getElementById("automod-rule-repeat");
+const automodRuleBurst = document.getElementById("automod-rule-burst");
+const automodRuleCaps = document.getElementById("automod-rule-caps");
+const automodRuleRepeatedChars = document.getElementById("automod-rule-repeated-chars");
+const automodRuleEmoji = document.getElementById("automod-rule-emoji");
+const automodRuleLine = document.getElementById("automod-rule-line");
+const automodLimitMentions = document.getElementById("automod-limit-mentions");
+const automodLimitRepeat = document.getElementById("automod-limit-repeat");
+const automodWindowRepeat = document.getElementById("automod-window-repeat");
+const automodLimitBurst = document.getElementById("automod-limit-burst");
+const automodWindowBurst = document.getElementById("automod-window-burst");
+const automodCapsMin = document.getElementById("automod-caps-min");
+const automodCapsRatio = document.getElementById("automod-caps-ratio");
+const automodCharLimit = document.getElementById("automod-char-limit");
+const automodEmojiLimit = document.getElementById("automod-emoji-limit");
+const automodLineLimit = document.getElementById("automod-line-limit");
+const automodAllowedInvites = document.getElementById("automod-allowed-invites");
+const automodAllowedDomains = document.getElementById("automod-allowed-domains");
+const automodBlockedWords = document.getElementById("automod-blocked-words");
+const automodBlockedExtensions = document.getElementById("automod-blocked-extensions");
+const automodExemptRoles = document.getElementById("automod-exempt-roles");
+const automodExemptChannels = document.getElementById("automod-exempt-channels");
+const automodExemptUsers = document.getElementById("automod-exempt-users");
+const automodSaveButton = document.getElementById("automod-save-button");
+const automodResetButton = document.getElementById("automod-reset-button");
+const automodFeedback = document.getElementById("automod-feedback");
+const automodStatusLabel = document.getElementById("automod-status-label");
+const automodEnabledRulesLabel = document.getElementById("automod-enabled-rules-label");
+const automodListSummaryLabel = document.getElementById("automod-list-summary-label");
+const automodLogChannelLabel = document.getElementById("automod-log-channel-label");
+const automodActionSummary = document.getElementById("automod-action-summary");
+const automodPresetBalanced = document.getElementById("automod-preset-balanced");
+const automodPresetStrict = document.getElementById("automod-preset-strict");
+const automodPresetRelaxed = document.getElementById("automod-preset-relaxed");
+const automodPresetOff = document.getElementById("automod-preset-off");
+
 const issueKeyForm = document.getElementById("issue-key-form");
 const issueDiscordId = document.getElementById("issue-discord-id");
 const issueDiscordTag = document.getElementById("issue-discord-tag");
@@ -87,6 +136,7 @@ const state = {
   users: [],
   auditLogs: [],
   moderationActions: [],
+  autoMod: null,
 };
 
 let slugEditedManually = false;
@@ -557,6 +607,162 @@ function loadScriptIntoForm(script) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function joinList(values) {
+  return Array.isArray(values) ? values.join("\n") : "";
+}
+
+function automodRuleEntries(config) {
+  return [
+    ["Invite Filter", config.rules?.invites?.enabled],
+    ["External Links", config.rules?.links?.enabled],
+    ["Blocked Words", config.rules?.blockedWords?.enabled],
+    ["Blocked Attachments", config.rules?.attachments?.enabled],
+    ["Mass Mentions", config.rules?.massMentions?.enabled],
+    ["Repeat Messages", config.rules?.repeatMessages?.enabled],
+    ["Burst Spam", config.rules?.burstSpam?.enabled],
+    ["Caps Spam", config.rules?.caps?.enabled],
+    ["Repeated Characters", config.rules?.repeatedChars?.enabled],
+    ["Emoji Spam", config.rules?.emojiSpam?.enabled],
+    ["Line Spam", config.rules?.lineSpam?.enabled],
+  ];
+}
+
+function enabledAutomodRules(config) {
+  return automodRuleEntries(config).filter(([, enabled]) => enabled).map(([label]) => label);
+}
+
+function fillAutoModForm(config) {
+  if (!config) {
+    return;
+  }
+
+  automodEnabled.checked = Boolean(config.enabled);
+  automodDeleteMessage.checked = Boolean(config.actions?.deleteMessage);
+  automodTimeoutEnabled.checked = Boolean(config.actions?.timeoutEnabled);
+  automodSendNotice.checked = Boolean(config.actions?.sendPublicNotice);
+  automodTimeoutMinutes.value = config.actions?.timeoutMinutes ?? 10;
+  automodNoticeSeconds.value = config.actions?.noticeSeconds ?? 15;
+  automodLogChannelId.value = config.actions?.logChannelId || "";
+
+  automodRuleInvites.checked = Boolean(config.rules?.invites?.enabled);
+  automodRuleLinks.checked = Boolean(config.rules?.links?.enabled);
+  automodRuleBlockedWords.checked = Boolean(config.rules?.blockedWords?.enabled);
+  automodRuleAttachments.checked = Boolean(config.rules?.attachments?.enabled);
+  automodRuleMassMentions.checked = Boolean(config.rules?.massMentions?.enabled);
+  automodRuleRepeat.checked = Boolean(config.rules?.repeatMessages?.enabled);
+  automodRuleBurst.checked = Boolean(config.rules?.burstSpam?.enabled);
+  automodRuleCaps.checked = Boolean(config.rules?.caps?.enabled);
+  automodRuleRepeatedChars.checked = Boolean(config.rules?.repeatedChars?.enabled);
+  automodRuleEmoji.checked = Boolean(config.rules?.emojiSpam?.enabled);
+  automodRuleLine.checked = Boolean(config.rules?.lineSpam?.enabled);
+
+  automodLimitMentions.value = config.rules?.massMentions?.limit ?? 5;
+  automodLimitRepeat.value = config.rules?.repeatMessages?.limit ?? 3;
+  automodWindowRepeat.value = config.rules?.repeatMessages?.windowSeconds ?? 12;
+  automodLimitBurst.value = config.rules?.burstSpam?.limit ?? 6;
+  automodWindowBurst.value = config.rules?.burstSpam?.windowSeconds ?? 8;
+  automodCapsMin.value = config.rules?.caps?.minLength ?? 12;
+  automodCapsRatio.value = Math.round((config.rules?.caps?.ratio ?? 0.75) * 100);
+  automodCharLimit.value = config.rules?.repeatedChars?.limit ?? 12;
+  automodEmojiLimit.value = config.rules?.emojiSpam?.limit ?? 10;
+  automodLineLimit.value = config.rules?.lineSpam?.limit ?? 8;
+
+  automodAllowedInvites.value = joinList(config.allowedInviteCodes);
+  automodAllowedDomains.value = joinList(config.allowedDomains);
+  automodBlockedWords.value = joinList(config.blockedWords);
+  automodBlockedExtensions.value = joinList(config.blockedExtensions);
+  automodExemptRoles.value = joinList(config.exemptRoleIds);
+  automodExemptChannels.value = joinList(config.exemptChannelIds);
+  automodExemptUsers.value = joinList(config.exemptUserIds);
+}
+
+function readAutoModForm() {
+  return {
+    enabled: automodEnabled.checked,
+    exemptRoleIds: automodExemptRoles.value,
+    exemptChannelIds: automodExemptChannels.value,
+    exemptUserIds: automodExemptUsers.value,
+    allowedInviteCodes: automodAllowedInvites.value,
+    allowedDomains: automodAllowedDomains.value,
+    blockedWords: automodBlockedWords.value,
+    blockedExtensions: automodBlockedExtensions.value,
+    actions: {
+      deleteMessage: automodDeleteMessage.checked,
+      timeoutEnabled: automodTimeoutEnabled.checked,
+      timeoutMinutes: automodTimeoutMinutes.value,
+      sendPublicNotice: automodSendNotice.checked,
+      noticeSeconds: automodNoticeSeconds.value,
+      logChannelId: automodLogChannelId.value.trim(),
+    },
+    rules: {
+      invites: { enabled: automodRuleInvites.checked },
+      links: { enabled: automodRuleLinks.checked },
+      blockedWords: { enabled: automodRuleBlockedWords.checked },
+      attachments: { enabled: automodRuleAttachments.checked },
+      massMentions: {
+        enabled: automodRuleMassMentions.checked,
+        limit: automodLimitMentions.value,
+      },
+      repeatMessages: {
+        enabled: automodRuleRepeat.checked,
+        limit: automodLimitRepeat.value,
+        windowSeconds: automodWindowRepeat.value,
+      },
+      burstSpam: {
+        enabled: automodRuleBurst.checked,
+        limit: automodLimitBurst.value,
+        windowSeconds: automodWindowBurst.value,
+      },
+      caps: {
+        enabled: automodRuleCaps.checked,
+        minLength: automodCapsMin.value,
+        ratio: automodCapsRatio.value,
+      },
+      repeatedChars: {
+        enabled: automodRuleRepeatedChars.checked,
+        limit: automodCharLimit.value,
+      },
+      emojiSpam: {
+        enabled: automodRuleEmoji.checked,
+        limit: automodEmojiLimit.value,
+      },
+      lineSpam: {
+        enabled: automodRuleLine.checked,
+        limit: automodLineLimit.value,
+      },
+    },
+  };
+}
+
+function renderAutoMod() {
+  const config = state.autoMod;
+  if (!config) {
+    return;
+  }
+
+  fillAutoModForm(config);
+
+  const enabledRules = enabledAutomodRules(config);
+  const trackedListCount =
+    (config.allowedInviteCodes?.length || 0) +
+    (config.allowedDomains?.length || 0) +
+    (config.blockedWords?.length || 0) +
+    (config.blockedExtensions?.length || 0) +
+    (config.exemptRoleIds?.length || 0) +
+    (config.exemptChannelIds?.length || 0) +
+    (config.exemptUserIds?.length || 0);
+
+  automodStatusLabel.textContent = config.enabled ? "Enabled" : "Disabled";
+  automodEnabledRulesLabel.textContent = String(enabledRules.length);
+  automodListSummaryLabel.textContent = String(trackedListCount);
+  automodLogChannelLabel.textContent = config.actions?.logChannelId ? `#${config.actions.logChannelId}` : "Not set";
+  automodActionSummary.textContent = `Delete ${config.actions?.deleteMessage ? "on" : "off"} • Timeout ${
+    config.actions?.timeoutEnabled ? `${config.actions.timeoutMinutes}m` : "off"
+  } • Notice ${config.actions?.sendPublicNotice ? `${config.actions.noticeSeconds}s` : "off"} • ${
+    enabledRules.length ? enabledRules.slice(0, 4).join(", ") : "No rules enabled"
+  }`;
+}
+
 function applyDashboard(payload) {
   state.overview = payload.overview || {};
   state.scripts = payload.scripts || [];
@@ -564,6 +770,7 @@ function applyDashboard(payload) {
   state.users = payload.users || [];
   state.auditLogs = payload.auditLogs || [];
   state.moderationActions = payload.moderationActions || [];
+  state.autoMod = payload.autoMod || null;
   renderDashboard();
 }
 
@@ -841,6 +1048,7 @@ function renderModeration() {
 
 function renderDashboard() {
   renderMetrics();
+  renderAutoMod();
   renderScripts();
   renderKeys();
   renderUsers();
@@ -949,6 +1157,26 @@ async function runUserAction(action) {
   }
 }
 
+async function applyAutoModPresetRequest(preset, button) {
+  clearFeedback(automodFeedback);
+
+  try {
+    setBusy(button, true, "Applying...");
+
+    const payload = await requestJson("/api/admin/automod/preset", {
+      method: "POST",
+      body: JSON.stringify({ preset }),
+    });
+
+    applyDashboard(payload.dashboard);
+    setFeedback(automodFeedback, `Applied the ${preset} auto-mod preset.`, "success");
+  } catch (error) {
+    setFeedback(automodFeedback, error.message, "error");
+  } finally {
+    setBusy(button, false, button.dataset.idleLabel);
+  }
+}
+
 async function bootstrap() {
   await refreshHealth();
   renderPreview();
@@ -1014,6 +1242,37 @@ dashboardTabs.forEach((button) => {
     switchDashboardPanel(button.dataset.dashboardTab);
   });
 });
+
+automodForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearFeedback(automodFeedback);
+
+  try {
+    setBusy(automodSaveButton, true, "Saving...");
+
+    const payload = await requestJson("/api/admin/automod", {
+      method: "POST",
+      body: JSON.stringify(readAutoModForm()),
+    });
+
+    applyDashboard(payload.dashboard);
+    setFeedback(automodFeedback, "Auto-mod settings saved successfully.", "success");
+  } catch (error) {
+    setFeedback(automodFeedback, error.message, "error");
+  } finally {
+    setBusy(automodSaveButton, false, automodSaveButton.dataset.idleLabel);
+  }
+});
+
+automodResetButton?.addEventListener("click", () => {
+  fillAutoModForm(state.autoMod);
+  clearFeedback(automodFeedback);
+});
+
+automodPresetBalanced?.addEventListener("click", () => applyAutoModPresetRequest("balanced", automodPresetBalanced));
+automodPresetStrict?.addEventListener("click", () => applyAutoModPresetRequest("strict", automodPresetStrict));
+automodPresetRelaxed?.addEventListener("click", () => applyAutoModPresetRequest("relaxed", automodPresetRelaxed));
+automodPresetOff?.addEventListener("click", () => applyAutoModPresetRequest("off", automodPresetOff));
 
 issueKeyType.addEventListener("change", updateIssueKeyHints);
 
