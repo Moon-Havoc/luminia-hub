@@ -1,7 +1,7 @@
 {
-  "name": "luminia-hub",
+  "name": "amethyst-hub",
   "version": "1.0.0",
-  "description": "Luminia Hub website and Discord bot for key generation and community moderation.",
+  "description": "Amethyst Hub website and Discord bot for key generation and community moderation.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

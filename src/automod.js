@@ -23,6 +23,7 @@ const DEFAULT_AUTOMOD_CONFIG = {
   allowedDomains: [
     "luminia-hub-production.up.railway.app",
     "luminia-hub.is-a.dev",
+    "amethyst-hub.is-a.dev",
   ],
   blockedWords: [],
   blockedExtensions: ["exe", "bat", "cmd", "scr", "vbs", "jar", "msi"],

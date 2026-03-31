@@ -1,5 +1,5 @@
 --https://discord.gg/yVefqKfU7
--- Join Luminia Hub!
+-- Join Amethyst Hub!
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -12,11 +12,11 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- 🎨 COLOR PALETTE
 -- ========================
 local COLORS = {
-    Background = Color3.fromRGB(10, 20, 45),
-    Surface = Color3.fromRGB(20, 40, 80),
-    Accent = Color3.fromRGB(90, 170, 255),
-    Glow = Color3.fromRGB(120, 200, 255),
-    Text = Color3.fromRGB(200, 220, 255),
+    Background = Color3.fromRGB(22, 10, 46),
+    Surface = Color3.fromRGB(46, 22, 86),
+    Accent = Color3.fromRGB(173, 113, 255),
+    Glow = Color3.fromRGB(221, 180, 255),
+    Text = Color3.fromRGB(239, 228, 255),
     Danger = Color3.fromRGB(255, 80, 80)
 }
 
@@ -24,7 +24,7 @@ local COLORS = {
 -- 📺 GUI SETUP
 -- ========================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LuminiaKeySystem"
+ScreenGui.Name = "AmethystKeySystem"
 ScreenGui.Parent = playerGui
 
 local Frame = Instance.new("Frame")
@@ -41,8 +41,8 @@ Instance.new("UICorner", Frame)
 local Gradient = Instance.new("UIGradient")
 Gradient.Parent = Frame
 Gradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 30, 70)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 60, 120))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 15, 70)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(74, 38, 130))
 }
 Gradient.Rotation = 90
 
@@ -63,7 +63,7 @@ local Title = Instance.new("TextLabel")
 Title.Parent = Frame
 Title.Size = UDim2.new(1, 0, 0, 50)
 Title.BackgroundTransparency = 1
-Title.Text = "LUMINIA HUB"
+Title.Text = "AMETHYST HUB"
 Title.TextColor3 = COLORS.Glow
 Title.TextSize = 32
 Title.Font = Enum.Font.GothamBold

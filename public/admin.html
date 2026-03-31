@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Luminia Hub Admin</title>
+    <title>Amethyst Hub Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" type="image/png" href="/assets/luminia-logo.png" />
-    <link rel="apple-touch-icon" href="/assets/luminia-logo.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/amethyst-mark.svg" />
+    <link rel="apple-touch-icon" href="/assets/amethyst-mark.svg" />
     <link rel="stylesheet" href="/admin.css" />
   </head>
   <body>
@@ -20,9 +20,9 @@
     <div class="admin-shell">
       <header class="admin-header">
         <a class="admin-brand" href="/">
-          <img class="admin-brand-mark" src="/assets/luminia-logo.png" alt="Luminia Hub logo" />
+          <img class="admin-brand-mark" src="/assets/amethyst-mark.svg" alt="Amethyst Hub mark" />
           <span>
-            <strong>Luminia Hub</strong>
+            <strong>Amethyst Hub</strong>
             <small>Control room</small>
           </span>
         </a>
@@ -46,14 +46,14 @@
       <main class="admin-main">
         <section id="admin-login-view" class="admin-card admin-login" data-reveal>
           <div class="admin-brand-panel">
-            <img class="admin-hero-logo" src="/assets/luminia-logo.png" alt="Luminia Hub logo" />
+            <img class="admin-hero-logo" src="/assets/amethyst-mark.svg" alt="Amethyst Hub mark" />
             <div>
-              <strong>LUMINIA HUB</strong>
+              <strong>AMETHYST HUB</strong>
               <span>Admin dashboard</span>
             </div>
           </div>
           <p class="eyebrow">Restricted access</p>
-          <h1>Sign in to Luminia Admin.</h1>
+          <h1>Sign in to Amethyst Admin.</h1>
           <p class="subcopy">Use an approved account to manage keys, users, scripts, and live Discord actions.</p>
 
           <div id="admin-config-warning" class="admin-warning hidden"></div>
@@ -94,14 +94,14 @@
             <section class="admin-hero">
               <div class="admin-card hero-copy-card" data-reveal>
                 <div class="admin-brand-panel compact">
-                  <img class="admin-hero-logo" src="/assets/luminia-logo.png" alt="Luminia Hub logo" />
+                  <img class="admin-hero-logo" src="/assets/amethyst-mark.svg" alt="Amethyst Hub mark" />
                   <div>
-                    <strong>LUMINIA HUB</strong>
+                    <strong>AMETHYST HUB</strong>
                     <span>Operations dashboard</span>
                   </div>
                 </div>
                 <p class="eyebrow">Control room</p>
-                <h1>Manage the full Luminia stack from one dashboard.</h1>
+                <h1>Manage the full Amethyst stack from one dashboard.</h1>
                 <p class="subcopy">Keys, users, scripts, and Discord actions are all live here.</p>
               </div>
 
@@ -195,7 +195,7 @@
                     </label>
                     <label>
                       <span>Issued Format</span>
-                      <input value="LUM_15Characters" disabled />
+                      <input value="AME_15Characters" disabled />
                     </label>
                   </div>
 
@@ -269,7 +269,7 @@
                 <form id="revoke-key-form" class="admin-form compact-form">
                   <label>
                     <span>Key</span>
-                    <input id="revoke-key-input" placeholder="LUM_XXXXXXXXXXXXXXX" required />
+                    <input id="revoke-key-input" placeholder="AME_XXXXXXXXXXXXXXX" required />
                   </label>
 
                   <label>
@@ -583,7 +583,7 @@
                       </label>
                       <label>
                         <span>Allowed Domains</span>
-                        <textarea id="automod-allowed-domains" rows="4" placeholder="luminia-hub-production.up.railway.app"></textarea>
+                        <textarea id="automod-allowed-domains" rows="4" placeholder="luminia-hub-production.up.railway.app or amethyst-hub.is-a.dev"></textarea>
                       </label>
                     </div>
 

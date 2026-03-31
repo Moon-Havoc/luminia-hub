@@ -522,7 +522,7 @@ function switchDashboardPanel(name) {
 
     if (isActive) {
       panel.querySelectorAll("[data-reveal]").forEach((node, index) => {
-        window.LuminiaSite?.observeReveal(node, index * 35);
+        window.AmethystSite?.observeReveal(node, index * 35);
       });
     }
   });
@@ -893,7 +893,7 @@ function renderScripts() {
   visibleScripts.forEach((script, index) => {
     const card = createScriptCard(script, { admin: true });
     scriptList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 50);
+    window.AmethystSite?.observeReveal(card, index * 50);
   });
 }
 
@@ -940,7 +940,7 @@ function renderKeys() {
     });
 
     keyList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 30);
+    window.AmethystSite?.observeReveal(card, index * 30);
   });
 }
 
@@ -982,7 +982,7 @@ function renderUsers() {
     });
 
     userList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 30);
+    window.AmethystSite?.observeReveal(card, index * 30);
   });
 }
 
@@ -1012,7 +1012,7 @@ function renderAuditLogs() {
     });
 
     auditList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 25);
+    window.AmethystSite?.observeReveal(card, index * 25);
   });
 }
 
@@ -1042,7 +1042,7 @@ function renderModeration() {
     });
 
     moderationList.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 25);
+    window.AmethystSite?.observeReveal(card, index * 25);
   });
 }
 

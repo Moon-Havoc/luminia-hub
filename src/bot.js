@@ -493,7 +493,7 @@ async function ensureActionableTarget(message, member, actionLabel) {
 async function handleCommands(message) {
   await replyEmbed(message, {
     color: "info",
-    title: "Luminia Hub Commands",
+    title: "Amethyst Hub Commands",
     description: COMMAND_DESCRIPTIONS.join("\n"),
   });
 }
@@ -1097,7 +1097,7 @@ async function handleGenerate(message, args, requestedScope) {
       await sendEmbed(member.user, {
         color: type === "premium" ? "info" : "success",
         title: `${accessLabel} Key Ready`,
-        description: `Here is your Luminia Hub access key for **${result.record.roblox_user}**.`,
+        description: `Here is your Amethyst Hub access key for **${result.record.roblox_user}**.`,
         fields: keyFields(result.record),
         footerText: `Issued by ${message.author.tag}`,
       });
@@ -1186,7 +1186,7 @@ async function handleRevoke(message, args, type) {
       await sendEmbed(member.user, {
         color: "warning",
         title: `${accessLabel} Key Revoked`,
-        description: `Your Luminia Hub key for **${updated.roblox_user}** has been revoked.`,
+        description: `Your Amethyst Hub key for **${updated.roblox_user}** has been revoked.`,
         fields: keyFields(updated),
         footerText: `Revoked by ${message.author.tag}`,
       });

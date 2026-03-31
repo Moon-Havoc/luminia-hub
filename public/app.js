@@ -66,7 +66,7 @@ function animateTerminal() {
     return;
   }
 
-  const reduceMotion = window.LuminiaSite?.reduceMotion;
+  const reduceMotion = window.AmethystSite?.reduceMotion;
   if (reduceMotion) {
     terminalLines.forEach((line) => {
       line.textContent = line.dataset.text || line.textContent;
@@ -142,7 +142,7 @@ function renderResult(payload, error = false) {
       <p>${payload}</p>
     `;
     window.requestAnimationFrame(() => {
-      window.LuminiaSite?.observeReveal(result, 0);
+      window.AmethystSite?.observeReveal(result, 0);
     });
     return;
   }
@@ -179,7 +179,7 @@ function renderResult(payload, error = false) {
   `;
 
   window.requestAnimationFrame(() => {
-    window.LuminiaSite?.observeReveal(result, 0);
+    window.AmethystSite?.observeReveal(result, 0);
   });
 }
 

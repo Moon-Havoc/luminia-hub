@@ -1,4 +1,4 @@
-(function initLuminiaSite() {
+(function initAmethystSite() {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let observer = null;
 
@@ -61,11 +61,14 @@
     });
   }
 
-  window.LuminiaSite = {
+  const api = {
     observeReveal,
     initReveal,
     reduceMotion,
   };
+
+  window.AmethystSite = api;
+  window.LuminiaSite = api;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => initReveal());

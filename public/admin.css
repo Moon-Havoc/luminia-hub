@@ -1,16 +1,16 @@
 :root {
-  --bg: #02040a;
-  --bg-strong: #050913;
-  --panel: rgba(7, 11, 20, 0.88);
-  --panel-strong: rgba(10, 17, 30, 0.95);
-  --panel-border: rgba(108, 166, 255, 0.14);
-  --text: #f2f7ff;
-  --muted: #859bbd;
-  --muted-strong: #c9daf4;
-  --accent: #5aa8ff;
-  --accent-bright: #7fc5ff;
-  --accent-soft: #87ebff;
-  --good: #8ff8d9;
+  --bg: #04010a;
+  --bg-strong: #12061d;
+  --panel: rgba(17, 8, 28, 0.88);
+  --panel-strong: rgba(24, 11, 41, 0.95);
+  --panel-border: rgba(178, 127, 255, 0.16);
+  --text: #f8f1ff;
+  --muted: #b095d0;
+  --muted-strong: #e3d7f6;
+  --accent: #9b6bff;
+  --accent-bright: #be90ff;
+  --accent-soft: #dfbfff;
+  --good: #ddb7ff;
   --warn: #ffb870;
   --danger: #ff8fa0;
   --radius-lg: 28px;
@@ -29,9 +29,9 @@ body {
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(90, 168, 255, 0.14), transparent 26%),
-    radial-gradient(circle at bottom right, rgba(135, 235, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, #010204 0%, #040913 46%, #07101d 100%);
+    radial-gradient(circle at top left, rgba(155, 107, 255, 0.18), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(223, 191, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, #030107 0%, #0d0617 46%, #190c2a 100%);
 }
 
 .noise-overlay {

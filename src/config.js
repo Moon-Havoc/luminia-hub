@@ -44,7 +44,7 @@ const config = {
   port: Number(process.env.PORT || 3000),
   databasePath: path.resolve(
     rootDir,
-    process.env.DATABASE_PATH || "./data/luminia.sqlite",
+    process.env.DATABASE_PATH || "./data/amethyst.sqlite",
   ),
   commandPrefix: process.env.COMMAND_PREFIX || "~",
   discordToken: process.env.DISCORD_TOKEN || "",
@@ -53,7 +53,7 @@ const config = {
   adminRoleIds: splitCsv(process.env.ADMIN_ROLE_IDS),
   adminUsers: parseAdminUsers(process.env.ADMIN_USERS),
   adminSessionSecret:
-    process.env.ADMIN_SESSION_SECRET || process.env.DISCORD_TOKEN || "luminia-local-admin-secret",
+    process.env.ADMIN_SESSION_SECRET || process.env.DISCORD_TOKEN || "amethyst-local-admin-secret",
   siteUrl: process.env.SITE_URL || `http://localhost:${process.env.PORT || 3000}`,
   required,
 };

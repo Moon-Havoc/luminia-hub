@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const config = require("./config");
 
-const ADMIN_COOKIE_NAME = "luminia_admin";
+const ADMIN_COOKIE_NAME = "amethyst_admin";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 function parseCookies(header) {

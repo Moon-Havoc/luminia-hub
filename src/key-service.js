@@ -19,7 +19,7 @@ function generateKeyValue() {
     const byte = crypto.randomBytes(1)[0];
     suffix += alphabet[byte % alphabet.length];
   }
-  return `LUM_${suffix}`;
+  return `AME_${suffix}`;
 }
 
 function normalizeName(value) {

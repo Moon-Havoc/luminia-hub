@@ -165,7 +165,7 @@ app.get("/api/health", (req, res) => {
   runMaintenance();
   res.json({
     ok: true,
-    name: "Luminia Hub",
+    name: "Amethyst Hub",
     time: new Date().toISOString(),
   });
 });

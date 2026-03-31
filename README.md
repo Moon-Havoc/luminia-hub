@@ -1,6 +1,6 @@
-# Luminia Hub
+# Amethyst Hub
 
-Luminia Hub is a combined website and Discord bot for issuing access keys, tracking key expiry, and handling moderation commands from a single codebase.
+Amethyst Hub is a combined website and Discord bot for issuing access keys, tracking key expiry, and handling moderation commands from a single codebase.
 
 ## What is included
 
@@ -12,7 +12,7 @@ Luminia Hub is a combined website and Discord bot for issuing access keys, track
 - Discord bot with the required `~` commands
 - 24-hour expiry for normal keys
 - Premium keys that never expire
-- Key format of `LUM_` followed by 15 characters
+- Key format of `AME_` followed by 15 characters
 
 ## Commands
 
@@ -84,9 +84,9 @@ Also included:
 
 ## Roblox integration
 
-- The versioned Roblox key GUI script lives at `integrations/roblox/luminia.lua`.
-- It currently points to the live Railway deployment at `https://luminia-hub-production.up.railway.app`.
-- If your production domain changes later, update `SITE_URL` near the bottom of that Lua file.
+- The versioned Roblox key GUI scripts live in `integrations/roblox/`.
+- They currently point to the live Railway deployment at `https://luminia-hub-production.up.railway.app`.
+- If your production domain changes later, update `SITE_URL` near the bottom of the Lua file you are using.
 
 ## Admin dashboard
 

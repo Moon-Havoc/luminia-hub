@@ -117,7 +117,7 @@ function createCard(script) {
 
   const placeChip = document.createElement("div");
   placeChip.className = "place-chip";
-  placeChip.textContent = script.place_id ? `Place ID ${script.place_id}` : "Luminia Script";
+  placeChip.textContent = script.place_id ? `Place ID ${script.place_id}` : "Amethyst Script";
 
   const status = document.createElement("div");
   status.className = "card-status";
@@ -216,7 +216,7 @@ function renderScripts() {
   visibleScripts.forEach((script, index) => {
     const card = createCard(script);
     libraryGrid.appendChild(card);
-    window.LuminiaSite?.observeReveal(card, index * 70);
+    window.AmethystSite?.observeReveal(card, index * 70);
   });
 }
 

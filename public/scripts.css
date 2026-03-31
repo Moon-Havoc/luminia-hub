@@ -1,17 +1,17 @@
 :root {
-  --bg: #020611;
-  --bg-deep: #061225;
-  --bg-surface: rgba(6, 14, 28, 0.8);
-  --bg-surface-strong: rgba(8, 18, 37, 0.92);
-  --line: rgba(128, 182, 255, 0.12);
-  --line-strong: rgba(141, 203, 255, 0.24);
-  --text: #edf5ff;
-  --muted: #8fa7c9;
-  --muted-strong: #c8daf3;
-  --blue: #4d7dff;
-  --blue-strong: #6fb1ff;
-  --blue-soft: #88d8ff;
-  --mint: #8cf4d7;
+  --bg: #05020d;
+  --bg-deep: #120723;
+  --bg-surface: rgba(17, 8, 31, 0.8);
+  --bg-surface-strong: rgba(24, 11, 43, 0.92);
+  --line: rgba(199, 155, 255, 0.12);
+  --line-strong: rgba(222, 191, 255, 0.24);
+  --text: #f6efff;
+  --muted: #b59ad4;
+  --muted-strong: #e4d7f7;
+  --blue: #8d5cff;
+  --blue-strong: #b47cff;
+  --blue-soft: #d4acff;
+  --mint: #d8b6ff;
   --warn: #ffbe79;
   --danger: #ff92a7;
   --shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
@@ -31,10 +31,10 @@ body {
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
   background:
-    radial-gradient(circle at 12% 10%, rgba(91, 130, 255, 0.18), transparent 18%),
-    radial-gradient(circle at 80% 12%, rgba(116, 203, 255, 0.14), transparent 20%),
-    radial-gradient(circle at 52% 82%, rgba(26, 74, 173, 0.2), transparent 30%),
-    linear-gradient(180deg, #01040b 0%, #041022 42%, #06152e 100%);
+    radial-gradient(circle at 12% 10%, rgba(152, 101, 255, 0.2), transparent 18%),
+    radial-gradient(circle at 80% 12%, rgba(221, 174, 255, 0.14), transparent 20%),
+    radial-gradient(circle at 52% 82%, rgba(90, 42, 160, 0.24), transparent 30%),
+    linear-gradient(180deg, #04010a 0%, #10061d 42%, #1a0c31 100%);
 }
 
 .grid-overlay {
@@ -64,7 +64,7 @@ body {
   height: 24rem;
   left: -7rem;
   top: 5rem;
-  background: rgba(72, 111, 255, 0.22);
+  background: rgba(146, 87, 255, 0.24);
 }
 
 .glow-top {
@@ -72,7 +72,7 @@ body {
   height: 18rem;
   left: 42%;
   top: -5rem;
-  background: rgba(88, 192, 255, 0.16);
+  background: rgba(214, 170, 255, 0.18);
   animation-delay: -3s;
 }
 
@@ -81,7 +81,7 @@ body {
   height: 25rem;
   right: -8rem;
   bottom: 0;
-  background: rgba(52, 104, 242, 0.18);
+  background: rgba(116, 62, 214, 0.2);
   animation-delay: -7s;
 }
 
