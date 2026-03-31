@@ -46,7 +46,7 @@ const config = {
     rootDir,
     process.env.DATABASE_PATH || "./data/luminia.sqlite",
   ),
-  commandPrefix: process.env.COMMAND_PREFIX || "!",
+  commandPrefix: process.env.COMMAND_PREFIX || "~",
   discordToken: process.env.DISCORD_TOKEN || "",
   discordClientId: process.env.DISCORD_CLIENT_ID || "",
   discordGuildId: process.env.DISCORD_GUILD_ID || "",
